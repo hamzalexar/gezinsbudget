@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="Gezinsbudget — beheer je maandelijks huishoudbudget: vaste facturen, inkomsten, variabele uitgaven en abonnementen, realtime gesynchroniseerd tussen toestellen.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%92%B6</text></svg>">
+<title>Gezinsbudget</title>
+<link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true">💶</span>
+      <h1>Gezinsbudget</h1>
+    </div>
+    <div class="sync-status" id="sync-status" data-state="loading">
+      <span class="sync-dot" aria-hidden="true"></span>
+      <span class="sync-label" id="sync-label">Verbinden…</span>
+    </div>
+  </header>
+
+  <nav class="month-nav" aria-label="Maandnavigatie">
+    <button type="button" id="prev-month" class="month-btn" aria-label="Vorige maand">‹</button>
+    <div class="month-label" id="month-label">—</div>
+    <button type="button" id="next-month" class="month-btn" aria-label="Volgende maand">›</button>
+  </nav>
+
+  <div class="banner hidden" id="carry-over-banner">
+    <span id="carry-over-text"></span>
+    <button type="button" class="banner-close" id="carry-over-close" aria-label="Sluiten">×</button>
+  </div>
+
+  <main id="main-content" class="hidden">
+
+    <section class="kpis" aria-label="Kernresultaten">
+      <div class="kpi-card kpi-transfer">
+        <div class="kpi-label">Over te schrijven naar gezamenlijke rekening</div>
+        <div class="kpi-value" id="kpi-transfer">€ 0,00</div>
+      </div>
+      <div class="kpi-card kpi-budget">
+        <div class="kpi-label">Budget voor variabele uitgaven</div>
+        <div class="kpi-value" id="kpi-budget">€ 0,00</div>
+      </div>
+      <div class="kpi-card kpi-after" id="kpi-after-card">
+        <div class="kpi-label">Na betalen (deze maand)</div>
+        <div class="kpi-value" id="kpi-after">€ 0,00</div>
+      </div>
+    </section>
+
+    <!-- INKOMSTEN -->
+    <section class="card" aria-labelledby="h-income">
+      <div class="card-header">
+        <h2 id="h-income">Inkomsten</h2>
+        <div class="card-total">Totaal: <span id="total-income">€ 0,00</span></div>
+      </div>
+
+      <div class="field-row">
+        <label for="salary-input">Loon</label>
+        <div class="amount-input">
+          <span class="amount-prefix">€</span>
+          <input type="number" id="salary-input" step="0.01" min="0" inputmode="decimal">
+        </div>
+      </div>
+
+      <h3 class="subheading">Kinderbijslag</h3>
+      <div class="list" id="children-list"></div>
+      <button type="button" class="btn-add" id="add-child">+ Kind toevoegen</button>
+
+      <h3 class="subheading">Extra inkomsten</h3>
+      <div class="list" id="extra-income-list"></div>
+      <button type="button" class="btn-add" id="add-extra-income">+ Extra inkomst toevoegen</button>
+    </section>
+
+    <!-- VASTE FACTUREN -->
+    <section class="card" aria-labelledby="h-fixed">
+      <div class="card-header">
+        <h2 id="h-fixed">Vaste facturen</h2>
+        <div class="card-total">Totaal: <span id="total-fixed">€ 0,00</span></div>
+      </div>
+
+      <div class="list" id="fixed-bills-list"></div>
+      <button type="button" class="btn-add" id="add-fixed-bill">+ Factuur toevoegen</button>
+
+      <div class="field-row field-row-split">
+        <div class="field-half">
+          <label for="buffer-input">Veiligheidsbuffer</label>
+          <div class="amount-input">
+            <span class="amount-prefix">€</span>
+            <input type="number" id="buffer-input" step="0.01" min="0" inputmode="decimal">
+          </div>
+        </div>
+        <div class="field-half">
+          <label for="partner-input">Bijdrage partner</label>
+          <div class="amount-input">
+            <span class="amount-prefix">€</span>
+            <input type="number" id="partner-input" step="0.01" min="0" inputmode="decimal">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VARIABELE UITGAVEN -->
+    <section class="card" aria-labelledby="h-variable">
+      <div class="card-header">
+        <h2 id="h-variable">Variabele uitgaven</h2>
+        <div class="card-total">Totaal: <span id="total-variable">€ 0,00</span></div>
+      </div>
+
+      <div class="list list-expenses" id="variable-list"></div>
+      <button type="button" class="btn-add" id="add-variable">+ Uitgave toevoegen</button>
+    </section>
+
+    <!-- ABONNEMENTEN -->
+    <section class="card" aria-labelledby="h-subs">
+      <div class="card-header">
+        <h2 id="h-subs">Abonnementen</h2>
+        <div class="card-total">Totaal: <span id="total-subs">€ 0,00</span></div>
+      </div>
+
+      <div class="list list-subs" id="subs-list"></div>
+      <button type="button" class="btn-add" id="add-sub">+ Abonnement toevoegen</button>
+    </section>
+
+    <!-- TANKBEURTEN -->
+    <section class="card" aria-labelledby="h-fuel">
+      <div class="card-header">
+        <h2 id="h-fuel">Tankbeurten</h2>
+        <div class="card-total card-total-muted">Enkel informatief</div>
+      </div>
+
+      <div class="fuel-grid">
+        <div class="fuel-col">
+          <div class="fuel-col-header">
+            <h3 class="subheading">🚙 Dacia</h3>
+            <div class="card-total">Totaal: <span id="total-fuel-dacia">€ 0,00</span></div>
+          </div>
+          <div class="list list-fuel" id="fuel-dacia-list"></div>
+          <button type="button" class="btn-add" id="add-fuel-dacia">+ Tankbeurt toevoegen</button>
+        </div>
+        <div class="fuel-col">
+          <div class="fuel-col-header">
+            <h3 class="subheading">🚗 Seat</h3>
+            <div class="card-total">Totaal: <span id="total-fuel-seat">€ 0,00</span></div>
+          </div>
+          <div class="list list-fuel" id="fuel-seat-list"></div>
+          <button type="button" class="btn-add" id="add-fuel-seat">+ Tankbeurt toevoegen</button>
+        </div>
+      </div>
+    </section>
+
+    <footer class="app-footer">
+      <p>Gezinsbudget · gegevens worden realtime gesynchroniseerd via Firebase</p>
+    </footer>
+
+  </main>
+
+  <div id="config-warning" class="config-warning hidden">
+    <div class="config-warning-box">
+      <h2>Firebase-configuratie ontbreekt</h2>
+      <p>Vul je eigen Firebase-projectgegevens in <code>js/firebase-config.js</code> in voordat je de app gebruikt. Zie <code>README.md</code> voor de volledige uitleg.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Firebase (compat SDK: werkt met gewone <script> tags, ook rechtstreeks via file://) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+
+<script src="js/firebase-config.js?v=1"></script>
+<script src="js/app.js?v=1"></script>
+</body>
+</html>
