@@ -44,21 +44,51 @@
   }
 
   // ==========================================================================
+  // Categorieën (voor vaste facturen, kredieten en variabele uitgaven —
+  // abonnementen zijn zelf al een categorie, dus die krijgen er geen eigen).
+  // ==========================================================================
+
+  const CATEGORIES = [
+    { id: "wonen", emoji: "🏠", label: "Wonen" },
+    { id: "elec", emoji: "⚡", label: "Elektriciteit & Gas" },
+    { id: "water", emoji: "💧", label: "Water" },
+    { id: "internet", emoji: "📶", label: "Internet, TV & Telefonie" },
+    { id: "verzekering", emoji: "🛡️", label: "Verzekeringen" },
+    { id: "lening", emoji: "🏦", label: "Lening/Krediet" },
+    { id: "kinderopvang", emoji: "🧸", label: "Kinderopvang" },
+    { id: "boodschappen", emoji: "🛒", label: "Boodschappen" },
+    { id: "eten", emoji: "🍽️", label: "Eten & drinken buiten" },
+    { id: "transport", emoji: "🚗", label: "Transport" },
+    { id: "kleding", emoji: "👕", label: "Kleding" },
+    { id: "elektronica", emoji: "🔌", label: "Elektronica & huishouden" },
+    { id: "verzorging", emoji: "💊", label: "Verzorging & gezondheid" },
+    { id: "vrijetijd", emoji: "🎁", label: "Cadeaus & vrije tijd" },
+    { id: "abonnement", emoji: "📺", label: "Abonnementen" },
+    { id: "overig", emoji: "📦", label: "Overig" }
+  ];
+
+  function categoryOptionsHTML(selectedId) {
+    return CATEGORIES.map(
+      (c) => '<option value="' + c.id + '"' + (c.id === selectedId ? " selected" : "") + ">" + c.emoji + " " + c.label + "</option>"
+    ).join("");
+  }
+
+  // ==========================================================================
   // Default data
   // ==========================================================================
 
   function defaultFixedBills() {
     return [
-      { id: genId(), desc: "Huur", amount: 800.65 },
-      { id: genId(), desc: "Elektriciteit", amount: 220.00 },
-      { id: genId(), desc: "Internet", amount: 85.90 },
-      { id: genId(), desc: "Verzekering Dacia", amount: 53.44 },
-      { id: genId(), desc: "Verzekering Seat", amount: 142.87 },
-      { id: genId(), desc: "Verzekering Familiale", amount: 14.75 },
-      { id: genId(), desc: "Afbetaling Dacia", amount: 320.27 },
-      { id: genId(), desc: "Afbetaling Seat", amount: 308.31 },
-      { id: genId(), desc: "Mutualiteit", amount: 35.65 },
-      { id: genId(), desc: "Crèche", amount: 0.00 }
+      { id: genId(), desc: "Huur", amount: 800.65, category: "wonen" },
+      { id: genId(), desc: "Elektriciteit", amount: 220.00, category: "elec" },
+      { id: genId(), desc: "Internet", amount: 85.90, category: "internet" },
+      { id: genId(), desc: "Verzekering Dacia", amount: 53.44, category: "verzekering" },
+      { id: genId(), desc: "Verzekering Seat", amount: 142.87, category: "verzekering" },
+      { id: genId(), desc: "Verzekering Familiale", amount: 14.75, category: "verzekering" },
+      { id: genId(), desc: "Afbetaling Dacia", amount: 320.27, category: "lening" },
+      { id: genId(), desc: "Afbetaling Seat", amount: 308.31, category: "lening" },
+      { id: genId(), desc: "Mutualiteit", amount: 35.65, category: "verzekering" },
+      { id: genId(), desc: "Crèche", amount: 0.00, category: "kinderopvang" }
     ].map((b) => Object.assign(b, { paid: false }));
   }
 
@@ -108,7 +138,7 @@
         children: (prevIncome.children || []).map((c) => ({ id: genId(), name: c.name || "", amount: num(c.amount) })),
         extra: []
       },
-      fixedBills: (prev.fixedBills || []).map((b) => ({ id: genId(), desc: b.desc || "", amount: num(b.amount), paid: false })),
+      fixedBills: (prev.fixedBills || []).map((b) => ({ id: genId(), desc: b.desc || "", amount: num(b.amount), category: b.category || "overig", paid: false })),
       buffer: num(prev.buffer),
       partnerContribution: num(prev.partnerContribution),
       variableExpenses: [],
@@ -122,10 +152,10 @@
     data.income.salary = num(data.income.salary);
     data.income.children = (data.income.children || []).map((c) => ({ id: c.id || genId(), name: c.name || "", amount: num(c.amount) }));
     data.income.extra = (data.income.extra || []).map((e) => ({ id: e.id || genId(), desc: e.desc || "", amount: num(e.amount) }));
-    data.fixedBills = (data.fixedBills || []).map((b) => ({ id: b.id || genId(), desc: b.desc || "", amount: num(b.amount), paid: !!b.paid }));
+    data.fixedBills = (data.fixedBills || []).map((b) => ({ id: b.id || genId(), desc: b.desc || "", amount: num(b.amount), category: b.category || "overig", paid: !!b.paid }));
     data.buffer = num(data.buffer);
     data.partnerContribution = num(data.partnerContribution);
-    data.variableExpenses = (data.variableExpenses || []).map((v) => ({ id: v.id || genId(), date: v.date || "", desc: v.desc || "", amount: num(v.amount), paid: !!v.paid }));
+    data.variableExpenses = (data.variableExpenses || []).map((v) => ({ id: v.id || genId(), date: v.date || "", desc: v.desc || "", amount: num(v.amount), category: v.category || "overig", paid: !!v.paid }));
     data.subscriptions = (data.subscriptions || []).map((s) => ({ id: s.id || genId(), desc: s.desc || "", amount: num(s.amount), paid: !!s.paid }));
     data.fuel = data.fuel || {};
     data.fuel.dacia = (data.fuel.dacia || []).map((f) => ({ id: f.id || genId(), date: f.date || "", amount: num(f.amount) }));
@@ -140,6 +170,7 @@
       id,
       desc: data.desc || "",
       amount: num(data.amount),
+      category: data.category || "lening",
       startMonth: data.startMonth || "",
       endMonth: data.endMonth || ""
     };
@@ -407,7 +438,9 @@
     const d = state.data;
     const activeCredits = activeCreditsForMonth(state.monthId);
     const totalIncome = num(d.income.salary) + sum(d.income.children, "amount") + sum(d.income.extra, "amount");
-    const totalFixed = sum(d.fixedBills, "amount") + sum(activeCredits, "amount");
+    const totalFixedOnly = sum(d.fixedBills, "amount");
+    const totalCreditsOnly = sum(activeCredits, "amount");
+    const totalFixed = totalFixedOnly + totalCreditsOnly;
     const toTransfer = Math.max(0, totalFixed + num(d.buffer) - num(d.partnerContribution));
     const paidCreditsAmount = sum(
       activeCredits.filter((c) => (d.paidCreditIds || []).includes(c.id)),
@@ -415,10 +448,12 @@
     );
     const paidFixed = sum(d.fixedBills.filter((b) => b.paid), "amount") + paidCreditsAmount;
     const remainingOnAccount = Math.max(0, toTransfer - paidFixed);
-    const variableBudget = totalIncome - toTransfer;
     const totalVariable = sum(d.variableExpenses, "amount");
     const totalSubs = sum(d.subscriptions, "amount");
-    const afterPaying = variableBudget - (totalVariable + totalSubs);
+    // Vrij te besteden: één rechtstreeks, actueel cijfer — inkomsten min ALLES
+    // wat het huishouden deze maand kost (vast + kredieten + variabel +
+    // abonnementen). Daalt automatisch naarmate je uitgaven ingeeft.
+    const vrijTeBesteden = totalIncome - (totalFixed + totalVariable + totalSubs);
 
     document.getElementById("total-income").textContent = formatEUR(totalIncome);
     document.getElementById("total-fixed").textContent = formatEUR(totalFixed);
@@ -429,11 +464,23 @@
 
     document.getElementById("kpi-transfer").textContent = formatEUR(toTransfer);
     document.getElementById("kpi-remaining").textContent = formatEUR(remainingOnAccount);
-    document.getElementById("kpi-budget").textContent = formatEUR(variableBudget);
-    document.getElementById("kpi-after").textContent = formatEUR(afterPaying);
+    document.getElementById("kpi-free").textContent = formatEUR(vrijTeBesteden);
+    document.getElementById("kpi-free-card").classList.toggle("negative", vrijTeBesteden < 0);
 
-    const afterCard = document.getElementById("kpi-after-card");
-    afterCard.classList.toggle("negative", afterPaying < 0);
+    // Overzichtskaarten
+    document.getElementById("total-inkomsten-card").textContent = formatEUR(totalIncome);
+    document.getElementById("total-vast-card").textContent = formatEUR(totalFixed);
+    document.getElementById("total-krediet-card").textContent = formatEUR(totalCreditsOnly);
+    document.getElementById("total-variabel-card").textContent = formatEUR(totalVariable);
+    document.getElementById("total-abonnement-card").textContent = formatEUR(totalSubs);
+
+    document.getElementById("meta-inkomsten").textContent =
+      (1 + d.income.children.length + d.income.extra.length) + " bronnen";
+    document.getElementById("meta-vast").textContent = d.fixedBills.length + " posten";
+    document.getElementById("meta-krediet").textContent = activeCredits.length + " lopend";
+    document.getElementById("meta-variabel").textContent = d.variableExpenses.length + " posten deze maand";
+    document.getElementById("meta-abonnement").textContent = d.subscriptions.filter((s) => s.amount > 0).length + " actief";
+    document.getElementById("meta-tank").textContent = (d.fuel.dacia.length + d.fuel.seat.length) + " tankbeurten";
   }
 
   // ==========================================================================
@@ -527,6 +574,7 @@
     row.className = "row row-desc-amount";
     row.innerHTML =
       '<input type="text" class="bill-desc" placeholder="Omschrijving" maxlength="80">' +
+      '<select class="row-category bill-category">' + categoryOptionsHTML(item.category) + "</select>" +
       '<div class="amount-input"><span class="amount-prefix">€</span>' +
       '<input type="number" class="bill-amount" step="0.01" min="0" inputmode="decimal"></div>' +
       '<label class="row-paid"><input type="checkbox" class="bill-paid">betaald</label>' +
@@ -534,6 +582,10 @@
 
     row.querySelector(".bill-desc").addEventListener("input", (e) => {
       updateItemInList(state.data.fixedBills, item.id, { desc: e.target.value });
+      scheduleSave();
+    });
+    row.querySelector(".bill-category").addEventListener("change", (e) => {
+      updateItemInList(state.data.fixedBills, item.id, { category: e.target.value });
       scheduleSave();
     });
     row.querySelector(".bill-amount").addEventListener("input", (e) => {
@@ -559,6 +611,7 @@
   function renderFixedBills() {
     syncList(document.getElementById("fixed-bills-list"), state.data.fixedBills, buildFixedBillRow, (row, item) => {
       setValueIfNotFocused(row.querySelector(".bill-desc"), item.desc);
+      setValueIfNotFocused(row.querySelector(".bill-category"), item.category);
       setValueIfNotFocused(row.querySelector(".bill-amount"), item.amount);
       const paidBox = row.querySelector(".bill-paid");
       if (document.activeElement !== paidBox) paidBox.checked = !!item.paid;
@@ -616,7 +669,10 @@
       if (!c) return;
       creditsCollectionRef()
         .doc(id)
-        .set({ desc: c.desc, amount: c.amount, startMonth: c.startMonth, endMonth: c.endMonth || null }, { merge: true })
+        .set(
+          { desc: c.desc, amount: c.amount, category: c.category, startMonth: c.startMonth, endMonth: c.endMonth || null },
+          { merge: true }
+        )
         .catch((err) => console.error("Krediet opslaan mislukt", err));
     }, 450);
   }
@@ -626,6 +682,7 @@
     row.className = "row row-credit";
     row.innerHTML =
       '<input type="text" class="credit-desc" placeholder="Omschrijving (bv. Lening auto)" maxlength="80">' +
+      '<select class="row-category credit-category">' + categoryOptionsHTML(item.category) + "</select>" +
       '<div class="credit-fields">' +
       '<div class="amount-input"><span class="amount-prefix">€</span>' +
       '<input type="number" class="credit-amount" step="0.01" min="0" inputmode="decimal"></div>' +
@@ -636,6 +693,10 @@
 
     row.querySelector(".credit-desc").addEventListener("input", (e) => {
       updateItemInList(state.credits, item.id, { desc: e.target.value });
+      scheduleCreditSave(item.id);
+    });
+    row.querySelector(".credit-category").addEventListener("change", (e) => {
+      updateItemInList(state.credits, item.id, { category: e.target.value });
       scheduleCreditSave(item.id);
     });
     row.querySelector(".credit-amount").addEventListener("input", (e) => {
@@ -668,6 +729,7 @@
   function renderCredits() {
     syncList(document.getElementById("credits-list"), state.credits, buildCreditRow, (row, item) => {
       setValueIfNotFocused(row.querySelector(".credit-desc"), item.desc);
+      setValueIfNotFocused(row.querySelector(".credit-category"), item.category);
       setValueIfNotFocused(row.querySelector(".credit-amount"), item.amount);
       setValueIfNotFocused(row.querySelector(".credit-start"), item.startMonth);
       setValueIfNotFocused(row.querySelector(".credit-end"), item.endMonth);
@@ -728,6 +790,7 @@
     row.innerHTML =
       '<input type="date" class="var-date row-date">' +
       '<input type="text" class="var-desc" placeholder="Omschrijving" maxlength="80">' +
+      '<select class="row-category var-category">' + categoryOptionsHTML(item.category) + "</select>" +
       '<div class="amount-input"><span class="amount-prefix">€</span>' +
       '<input type="number" class="var-amount" step="0.01" min="0" inputmode="decimal"></div>' +
       '<label class="row-paid"><input type="checkbox" class="var-paid">betaald</label>' +
@@ -739,6 +802,10 @@
     });
     row.querySelector(".var-desc").addEventListener("input", (e) => {
       updateItemInList(state.data.variableExpenses, item.id, { desc: e.target.value });
+      scheduleSave();
+    });
+    row.querySelector(".var-category").addEventListener("change", (e) => {
+      updateItemInList(state.data.variableExpenses, item.id, { category: e.target.value });
       scheduleSave();
     });
     row.querySelector(".var-amount").addEventListener("input", (e) => {
@@ -764,6 +831,7 @@
     syncList(document.getElementById("variable-list"), state.data.variableExpenses, buildVariableRow, (row, item) => {
       setValueIfNotFocused(row.querySelector(".var-date"), item.date);
       setValueIfNotFocused(row.querySelector(".var-desc"), item.desc);
+      setValueIfNotFocused(row.querySelector(".var-category"), item.category);
       setValueIfNotFocused(row.querySelector(".var-amount"), item.amount);
       const paidBox = row.querySelector(".var-paid");
       if (document.activeElement !== paidBox) paidBox.checked = !!item.paid;
@@ -885,6 +953,139 @@
   }
 
   // ==========================================================================
+  // Schermnavigatie
+  //
+  // De app bestaat uit een overzichtsscherm (KPI's + compacte sectiekaarten)
+  // en een apart scherm per sectie, in plaats van alles onder elkaar op één
+  // lange pagina — zo hoef je niet te scrollen langs alle andere secties om
+  // bv. een variabele uitgave toe te voegen.
+  // ==========================================================================
+
+  const BACK_TARGET = {
+    "screen-inkomsten": "screen-overview",
+    "screen-vast": "screen-overview",
+    "screen-krediet": "screen-overview",
+    "screen-variabel": "screen-overview",
+    "screen-abonnement": "screen-overview",
+    "screen-tank": "screen-overview",
+    "screen-type": "screen-overview"
+  };
+
+  let categoryBackTarget = "screen-overview";
+  let addFlowType = null;
+
+  function showScreen(id) {
+    document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    window.scrollTo(0, 0);
+  }
+
+  function bindBackButtons() {
+    document.querySelectorAll(".screen [data-back]").forEach((btn) => {
+      const screenEl = btn.closest(".screen");
+      btn.addEventListener("click", () => {
+        if (screenEl.id === "screen-category") {
+          showScreen(categoryBackTarget);
+        } else {
+          showScreen(BACK_TARGET[screenEl.id] || "screen-overview");
+        }
+      });
+    });
+  }
+
+  function bindOverviewCards() {
+    document.querySelectorAll(".section-card").forEach((card) => {
+      const section = card.getAttribute("data-section");
+      const open = () => showScreen("screen-" + section);
+      card.addEventListener("click", open);
+      card.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          open();
+        }
+      });
+    });
+    document.querySelectorAll(".section-add").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const section = btn.getAttribute("data-add");
+        if (section === "vast" || section === "krediet" || section === "variabel") {
+          openCategoryPicker(section, "screen-overview");
+        } else {
+          showScreen("screen-" + section);
+        }
+      });
+    });
+    document.getElementById("fab-add").addEventListener("click", () => {
+      categoryBackTarget = "screen-overview";
+      showScreen("screen-type");
+    });
+    document.querySelectorAll(".type-option").forEach((btn) => {
+      btn.addEventListener("click", () => openCategoryPicker(btn.getAttribute("data-type"), "screen-type"));
+    });
+  }
+
+  function openCategoryPicker(type, backTarget) {
+    addFlowType = type;
+    categoryBackTarget = backTarget;
+    renderCategoryGrid();
+    showScreen("screen-category");
+  }
+
+  function renderCategoryGrid() {
+    const grid = document.getElementById("cat-grid");
+    grid.innerHTML = "";
+    CATEGORIES.forEach((cat) => {
+      const tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = "cat-tile";
+      tile.innerHTML = '<span class="emoji">' + cat.emoji + '</span><span class="lbl">' + cat.label + "</span>";
+      tile.addEventListener("click", () => chooseCategoryForNewItem(cat.id));
+      grid.appendChild(tile);
+    });
+  }
+
+  function focusSoon(selector) {
+    requestAnimationFrame(() => {
+      const el = document.querySelector(selector);
+      if (el) el.focus();
+    });
+  }
+
+  function chooseCategoryForNewItem(categoryId) {
+    if (addFlowType === "vast") {
+      const item = { id: genId(), desc: "", amount: 0, category: categoryId, paid: false };
+      state.data.fixedBills.push(item);
+      renderFixedBills();
+      renderKPIs();
+      scheduleSave();
+      showScreen("screen-vast");
+      focusSoon('#fixed-bills-list [data-id="' + item.id + '"] .bill-desc');
+    } else if (addFlowType === "krediet") {
+      creditsCollectionRef()
+        .add({ desc: "", amount: 0, category: categoryId, startMonth: state.monthId, endMonth: null })
+        .catch((err) => console.error("Krediet toevoegen mislukt", err));
+      showScreen("screen-krediet");
+    } else if (addFlowType === "variabel") {
+      const today = new Date();
+      const item = {
+        id: genId(),
+        date: today.toISOString().slice(0, 10),
+        desc: "",
+        amount: 0,
+        category: categoryId,
+        paid: false
+      };
+      state.data.variableExpenses.push(item);
+      renderVariableExpenses();
+      renderKPIs();
+      scheduleSave();
+      showScreen("screen-variabel");
+      focusSoon('#variable-list [data-id="' + item.id + '"] .var-desc');
+    }
+  }
+
+  // ==========================================================================
   // Static event bindings
   // ==========================================================================
 
@@ -930,13 +1131,13 @@
       scheduleSave();
     });
     document.getElementById("add-fixed-bill").addEventListener("click", () => {
-      state.data.fixedBills.push({ id: genId(), desc: "", amount: 0 });
+      state.data.fixedBills.push({ id: genId(), desc: "", amount: 0, category: "overig" });
       renderFixedBills();
       scheduleSave();
     });
     document.getElementById("add-credit").addEventListener("click", () => {
       creditsCollectionRef()
-        .add({ desc: "", amount: 0, startMonth: state.monthId, endMonth: null })
+        .add({ desc: "", amount: 0, category: "lening", startMonth: state.monthId, endMonth: null })
         .catch((err) => console.error("Krediet toevoegen mislukt", err));
     });
     document.getElementById("add-variable").addEventListener("click", () => {
@@ -946,6 +1147,7 @@
         date: today.toISOString().slice(0, 10),
         desc: "",
         amount: 0,
+        category: "overig",
         paid: false
       });
       renderVariableExpenses();
@@ -991,6 +1193,8 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     bindStaticEvents();
+    bindBackButtons();
+    bindOverviewCards();
     document.getElementById("month-label").textContent = monthLabelOf(state.currentDate);
     if (initFirebase()) {
       loadCredits();

@@ -4,6 +4,8 @@ Een responsive, mobile-first webapp voor maandelijks huishoudbudgetbeheer, met *
 
 ## Wat de app doet
 
+- **Overzichtsscherm + aparte schermen per sectie**: de startpagina toont enkel de KPI's en compacte samenvattingskaarten (totaal + aantal posten) per sectie. Tik op een kaart om de volledige, bewerkbare lijst van die sectie te openen — zo hoef je niet langs alle andere secties te scrollen voor één wijziging.
+- **Categorieën**: vaste facturen, kredieten en variabele uitgaven krijgen elk een categorie (Wonen, Elektriciteit & Gas, Verzekeringen, Boodschappen, Transport, …) voor latere analyse. Via de ➕ (op een sectiekaart, of de zwevende knop rechtsonder) kies je eerst het type (eenmalig / vast / krediet) en dan de categorie — de nieuwe post wordt meteen aangemaakt in de juiste lijst, klaar om in te vullen.
 - **Inkomsten**: loon, kinderbijslag per kind (vrij toe te voegen/verwijderen), extra inkomsten (bonus, RVA, teruggave, …).
 - **Vaste facturen**: huur, elektriciteit, verzekeringen, afbetalingen, … + veiligheidsbuffer en bijdrage partner.
 - **Automatisch meenemen**: bij het voor het eerst openen van een nieuwe maand worden de vaste facturen, abonnementen, veiligheidsbuffer en bijdrage partner automatisch gekopieerd uit de meest recente bestaande vorige maand. Verwijder je een post in maand X, dan verdwijnt die vanaf maand X en alle daaropvolgende (nog niet eerder geopende) maanden; eerder al geopende maanden blijven ongewijzigd. **Let op**: een post die je pas ná het aanmaken van latere maanden toevoegt, bereikt die al bestaande latere maanden niet automatisch — gebruik daarvoor een **krediet** (zie hieronder).
@@ -11,7 +13,7 @@ Een responsive, mobile-first webapp voor maandelijks huishoudbudgetbeheer, met *
 - **Variabele uitgaven**: vrije lijst per maand (start elke maand leeg), met datum, omschrijving, bedrag en betaald-vinkje.
 - **Abonnementen**: terugkerende kosten (Apple Music, YouTube Premium, Disney+, …), blijven maand na maand meelopen, maar het betaald-vinkje wordt elke maand automatisch terug uitgevinkt.
 - **Tankbeurten**: puur informatieve lijstjes per auto (Dacia/Seat), tellen niet mee in de budgetberekening.
-- **KPI's bovenaan**: over te schrijven naar de gezamenlijke rekening, wat daarvan nog op de rekening moet staan (rekening houdend met reeds betaalde facturen/kredieten), budget voor variabele uitgaven, en wat er na alle uitgaven deze maand nog rest.
+- **KPI's bovenaan**: "Over te schrijven naar de gezamenlijke rekening", "Nog te betalen op rekening" (rekening houdend met reeds betaalde facturen/kredieten), en "Vrij te besteden" = inkomsten min alles wat het huishouden deze maand kost (vaste facturen + kredieten + variabele uitgaven + abonnementen) — één rechtstreeks cijfer dat daalt naarmate je uitgaven ingeeft.
 - **Statistieken**: aparte pagina met grafieken over alle opgeslagen maanden (inkomsten vs. uitgaven, variabele uitgaven/abonnementen per maand, budgetverdeling per maand, tankkosten per auto).
 - **Licht/donker thema**: volgt automatisch de systeeminstelling van je toestel.
 
