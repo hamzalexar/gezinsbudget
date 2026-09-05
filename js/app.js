@@ -457,7 +457,7 @@
     const vrijTeBesteden = totalIncome - totalCosts;
 
     document.getElementById("total-income").textContent = formatEUR(totalIncome);
-    document.getElementById("total-fixed").textContent = formatEUR(totalFixed);
+    document.getElementById("total-fixed").textContent = formatEUR(totalFixedOnly);
     document.getElementById("total-variable").textContent = formatEUR(totalVariable);
     document.getElementById("total-subs").textContent = formatEUR(totalSubs);
     document.getElementById("total-fuel-dacia").textContent = formatEUR(sum(d.fuel.dacia, "amount"));
@@ -471,7 +471,7 @@
 
     // Overzichtskaarten
     document.getElementById("total-inkomsten-card").textContent = formatEUR(totalIncome);
-    document.getElementById("total-vast-card").textContent = formatEUR(totalFixed);
+    document.getElementById("total-vast-card").textContent = formatEUR(totalFixedOnly);
     document.getElementById("total-krediet-card").textContent = formatEUR(totalCreditsOnly);
     document.getElementById("total-variabel-card").textContent = formatEUR(totalVariable);
     document.getElementById("total-abonnement-card").textContent = formatEUR(totalSubs);
