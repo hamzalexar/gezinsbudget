@@ -278,6 +278,10 @@
     });
   }
 
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) location.reload();
+  });
+
   document.addEventListener("DOMContentLoaded", () => {
     if (initFirebase()) loadAndRender();
   });

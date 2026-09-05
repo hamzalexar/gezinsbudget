@@ -799,6 +799,14 @@
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) flushSave();
   });
+  // When the browser restores this page from the back/forward cache (bfcache)
+  // instead of a real reload, Firestore's realtime connection stays frozen
+  // and never reconnects on its own — the sync status would be stuck on
+  // whatever it was when the page was left. Forcing a reload re-establishes
+  // a fresh listener.
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) location.reload();
+  });
 
   document.addEventListener("DOMContentLoaded", () => {
     bindStaticEvents();

@@ -75,25 +75,22 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 
 .topbar-actions { display: flex; align-items: center; gap: 8px; }
 
-.stats-link,
-.back-link {
+.icon-btn {
+  width: var(--tap);
+  height: var(--tap);
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--accent);
-  text-decoration: none;
-  padding: 6px 10px;
-  border-radius: 999px;
+  justify-content: center;
+  border-radius: 50%;
   background: var(--surface);
   border: 1px solid var(--border);
-  min-height: var(--tap);
+  box-shadow: var(--shadow);
+  font-size: 1.15rem;
+  text-decoration: none;
+  color: var(--text);
 }
-.stats-link span { display: none; }
-@media (min-width: 480px) {
-  .stats-link span { display: inline; }
-}
+.icon-btn:active { transform: scale(0.94); }
 
 .sync-status {
   display: flex;
