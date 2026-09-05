@@ -112,4 +112,8 @@ Elke maand wordt opgeslagen als één document in de Firestore-collectie `months
 
 ## Browserondersteuning
 
-De app gebruikt de Firebase **compat SDK** (klassieke `<script>`-tags, geen ES modules), zodat ze ook werkt wanneer je `index.html` rechtstreeks vanaf schijf opent (`file://`) zonder CORS-problemen. Een actieve internetverbinding is nodig voor synchronisatie; Firestore-offline-persistentie is ingeschakeld zodat reeds geladen gegevens ook offline zichtbaar blijven.
+De app gebruikt de Firebase **compat SDK** (klassieke `<script>`-tags, geen ES modules), zodat het bestand zelf probleemloos laadt wanneer je `index.html` rechtstreeks vanaf schijf opent (`file://`), zonder CORS-problemen bij het inladen van scripts.
+
+> **Let op:** de realtime Firestore-synchronisatie zelf werkt in sommige browsers (met name Safari) **niet** wanneer de pagina via `file://` geopend is — dat blokkeert uit veiligheidsoverwegingen netwerkverkeer vanaf lokale bestanden, los van je Firebase-configuratie of -regels. Je ziet dan foutmeldingen zoals *"Fetch API cannot load ... due to access control checks"*. Host de app daarom via **GitHub Pages** (zie hierboven) of een lokale webserver (bv. `python3 -m http.server` in de projectmap, dan `http://localhost:8000` openen) — dat lost dit meteen op, en is voor twee toestellen die dezelfde gegevens delen sowieso de praktische aanpak.
+
+Een actieve internetverbinding is nodig voor synchronisatie; Firestore-offline-persistentie is ingeschakeld zodat reeds geladen gegevens ook offline zichtbaar blijven.
