@@ -13,7 +13,8 @@ Een responsive, mobile-first webapp voor maandelijks huishoudbudgetbeheer, met *
 - **Variabele uitgaven**: vrije lijst per maand (start elke maand leeg), met datum, omschrijving, bedrag en betaald-vinkje.
 - **Abonnementen**: terugkerende kosten (Apple Music, YouTube Premium, Disney+, …), blijven maand na maand meelopen, maar het betaald-vinkje wordt elke maand automatisch terug uitgevinkt.
 - **Tankbeurten**: puur informatieve lijstjes per auto (Dacia/Seat), tellen niet mee in de budgetberekening.
-- **KPI's bovenaan**: "Over te schrijven naar de gezamenlijke rekening", "Nog te betalen op rekening" (rekening houdend met reeds betaalde facturen/kredieten), en "Vrij te besteden" = inkomsten min alles wat het huishouden deze maand kost (vaste facturen + kredieten + variabele uitgaven + abonnementen) — één rechtstreeks cijfer dat daalt naarmate je uitgaven ingeeft.
+- **KPI's bovenaan**: "Over te schrijven naar de gezamenlijke rekening" (daalt automatisch zodra je een vaste factuur of krediet als betaald aanvinkt) en "Vrij te besteden" = inkomsten min alles wat het huishouden deze maand kost (vaste facturen + kredieten + variabele uitgaven + abonnementen) — één rechtstreeks cijfer dat daalt naarmate je uitgaven ingeeft.
+- **"Te betalen op rekening"-overzicht**: aparte sectiekaart die alle vaste facturen en kredieten van de maand samen als één lijst toont, met een betaald-vinkje per post — zo hoef je niet tussen Vaste facturen en Kredieten te wisselen om te zien wat nog moet gebeuren. Afvinken hier werkt rechtstreeks door naar die schermen en naar de KPI bovenaan.
 - **Statistieken**: aparte pagina met grafieken over alle opgeslagen maanden (inkomsten vs. uitgaven, variabele uitgaven/abonnementen per maand, budgetverdeling per maand, tankkosten per auto).
 - **Licht/donker thema**: volgt automatisch de systeeminstelling van je toestel.
 
