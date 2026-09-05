@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="Importeer je Argenta-banktransacties (CSV) en bekijk inkomsten, uitgaven per categorie en je grootste uitgaven.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%92%B6</text></svg>">
+<title>Gezinsbudget — Transacties</title>
+<link rel="stylesheet" href="css/style.css?v=6">
+<link rel="stylesheet" href="css/stats.css?v=6">
+<link rel="stylesheet" href="css/transacties.css?v=1">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true">🏦</span>
+      <h1>Transacties</h1>
+    </div>
+    <div class="topbar-actions">
+      <a href="index.html" class="icon-btn" aria-label="Terug naar budget" title="Terug naar budget">←</a>
+      <div class="sync-status" id="sync-status" data-state="loading">
+        <span class="sync-dot" aria-hidden="true"></span>
+        <span class="sync-label" id="sync-label">Verbinden…</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content" class="hidden">
+
+    <p class="stats-intro">Upload je Argenta-transactiebestand (CSV) — elke maand of elk kwartaal opnieuw kan, reeds geïmporteerde transacties worden herkend en gewoon bijgewerkt, niet dubbel geteld.</p>
+
+    <section class="card">
+      <div class="card-header"><h2>CSV importeren</h2></div>
+      <p class="card-hint">Verwachte kolommen: date, amount, currency, category, type, counterparty_name, counterparty_account, message, account, is_internal_transfer, value_date, transaction_date, reference.</p>
+      <label class="btn-add tx-upload-btn" for="csv-file-input">📄 Kies CSV-bestand</label>
+      <input type="file" id="csv-file-input" accept=".csv,text/csv" class="hidden">
+      <p class="tx-status hidden" id="upload-status"></p>
+    </section>
+
+    <section class="card hidden" id="preview-card">
+      <div class="card-header">
+        <h2>Controleer categorieën</h2>
+        <div class="card-total card-total-muted" id="preview-summary"></div>
+      </div>
+      <p class="card-hint">De categorie per uitgave is automatisch ingeschat op basis van de tegenpartij/omschrijving. Pas gerust aan waar nodig vóór je importeert.</p>
+      <div class="tx-preview-list" id="preview-list"></div>
+      <button type="button" class="btn-add" id="confirm-import">Importeren (<span id="confirm-count">0</span> transacties)</button>
+    </section>
+
+    <p class="stats-empty" id="tx-empty">Nog geen transacties geïmporteerd. Upload hierboven je eerste CSV-bestand.</p>
+
+    <div id="tx-dashboard" class="hidden">
+
+      <section class="kpis stats-summary" aria-label="Totalen">
+        <div class="kpi-card kpi-remaining">
+          <div class="kpi-label">Totale inkomsten</div>
+          <div class="kpi-value" id="tx-total-income">€ 0,00</div>
+        </div>
+        <div class="kpi-card kpi-remaining">
+          <div class="kpi-label">Totale uitgaven</div>
+          <div class="kpi-value" id="tx-total-expenses">€ 0,00</div>
+        </div>
+        <div class="kpi-card kpi-free" id="tx-balance-card">
+          <div class="kpi-label">Saldo</div>
+          <div class="kpi-value" id="tx-balance">€ 0,00</div>
+        </div>
+      </section>
+
+      <section class="card chart-card" aria-labelledby="h-chart-tx-overview">
+        <div class="card-header">
+          <h2 id="h-chart-tx-overview">Inkomsten vs. uitgaven per maand</h2>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-tx-overview" role="img" aria-label="Staafdiagram van inkomsten en uitgaven per maand"></canvas></div>
+      </section>
+
+      <section class="card chart-card" aria-labelledby="h-chart-tx-split">
+        <div class="card-header">
+          <h2 id="h-chart-tx-split">Uitgaven per categorie</h2>
+        </div>
+        <div class="split-layout">
+          <div class="chart-wrap chart-wrap-donut"><canvas id="chart-tx-split" role="img" aria-label="Cirkeldiagram met uitgaven per categorie"></canvas></div>
+          <table class="split-table" id="tx-split-table">
+            <thead><tr><th>Categorie</th><th>Bedrag</th><th>%</th></tr></thead>
+            <tbody id="tx-split-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card chart-card" aria-labelledby="h-chart-tx-top">
+        <div class="card-header">
+          <h2 id="h-chart-tx-top">Grootste uitgaven</h2>
+        </div>
+        <div class="tx-table-wrap">
+          <table class="split-table tx-top-table" id="tx-top-table">
+            <thead><tr><th>Datum</th><th>Omschrijving</th><th>Categorie</th><th>Bedrag</th></tr></thead>
+            <tbody id="tx-top-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+
+    <footer class="app-footer">
+      <p>Gezinsbudget · transacties worden realtime gesynchroniseerd via Firebase</p>
+    </footer>
+
+  </main>
+
+  <div id="config-warning" class="config-warning hidden">
+    <div class="config-warning-box">
+      <h2>Firebase-configuratie ontbreekt</h2>
+      <p>Vul je eigen Firebase-projectgegevens in <code>js/firebase-config.js</code> in voordat je de app gebruikt. Zie <code>README.md</code> voor de volledige uitleg.</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+
+<script src="js/firebase-config.js?v=5"></script>
+<script src="js/transacties.js?v=1"></script>
+</body>
+</html>

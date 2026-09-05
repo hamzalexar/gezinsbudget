@@ -16,6 +16,7 @@ Een responsive, mobile-first webapp voor maandelijks huishoudbudgetbeheer, met *
 - **KPI's bovenaan**: "Over te schrijven naar de gezamenlijke rekening" start op het totaal van alle kosten (vaste facturen + kredieten + variabele uitgaven + abonnementen, want alles wordt vanaf die rekening betaald) en daalt automatisch zodra je om het even welke van die posten als betaald aanvinkt. "Totale kosten deze maand" is hetzelfde kostenplaatje maar dan als vast referentiecijfer (verandert niet als je betaalt). "Vrij te besteden" = inkomsten min de totale kosten — één rechtstreeks cijfer dat daalt naarmate je uitgaven ingeeft.
 - **"Te betalen op rekening"-overzicht**: aparte sectiekaart die vaste facturen en kredieten van de maand samen als één lijst toont, met een betaald-vinkje per post — zo hoef je niet tussen Vaste facturen en Kredieten te wisselen om te zien wat daarvan nog moet gebeuren. Afvinken hier werkt rechtstreeks door naar die schermen en naar de KPI's bovenaan. Variabele uitgaven en abonnementen hebben elk al hun eigen scherm met betaald-vinkjes en staan daarom niet nog eens in dit overzicht.
 - **Statistieken**: aparte pagina met grafieken over alle opgeslagen maanden (inkomsten vs. uitgaven, variabele uitgaven/abonnementen per maand, budgetverdeling per maand, tankkosten per auto).
+- **Transacties (bank-CSV importeren)**: aparte pagina om periodiek (bv. maandelijks of per kwartaal) een Argenta-CSV-export te uploaden. De transacties worden automatisch voorgecategoriseerd (op basis van tegenpartij/omschrijving) in dezelfde categorieën als de rest van de app — je kan dat voor het importeren nog corrigeren. Interne overschrijvingen tussen je eigen rekeningen worden uitgesloten bij de totalen. Toont inkomsten vs. uitgaven per maand, uitgaven per categorie en je grootste uitgaven. Een herhaalde/overlappende upload overschrijft gewoon dezelfde transacties (geen dubbeltelling).
 - **Licht/donker thema**: volgt automatisch de systeeminstelling van je toestel.
 
 ## Bestandsstructuur
@@ -24,13 +25,16 @@ Een responsive, mobile-first webapp voor maandelijks huishoudbudgetbeheer, met *
 gezinsbudget/
 ├── index.html
 ├── statistieken.html
+├── transacties.html
 ├── css/
 │   ├── style.css
-│   └── stats.css
+│   ├── stats.css
+│   └── transacties.css
 ├── js/
 │   ├── firebase-config.js   <- hier vul je je eigen Firebase-gegevens in
 │   ├── app.js
-│   └── stats.js
+│   ├── stats.js
+│   └── transacties.js
 └── README.md
 ```
 
@@ -88,6 +92,9 @@ service cloud.firestore {
       allow read, write: if true;
     }
     match /credits/{creditId} {
+      allow read, write: if true;
+    }
+    match /bankTransactions/{transactionId} {
       allow read, write: if true;
     }
   }
