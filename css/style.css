@@ -183,7 +183,8 @@ body { padding-bottom: env(safe-area-inset-bottom); }
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
 
-.kpi-card.kpi-budget {
+.kpi-card.kpi-budget,
+.kpi-card.kpi-remaining {
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
@@ -205,7 +206,8 @@ body { padding-bottom: env(safe-area-inset-bottom); }
   font-weight: 600;
   margin-bottom: 6px;
 }
-.kpi-card.kpi-budget .kpi-label { color: var(--text-muted); opacity: 1; }
+.kpi-card.kpi-budget .kpi-label,
+.kpi-card.kpi-remaining .kpi-label { color: var(--text-muted); opacity: 1; }
 .kpi-card.kpi-after .kpi-label { opacity: 0.9; }
 
 .kpi-value {
@@ -465,7 +467,7 @@ input[type="checkbox"] {
 
 /* ===== Responsive: tablet / desktop ===== */
 @media (min-width: 640px) {
-  .kpis { grid-template-columns: repeat(3, 1fr); }
+  .kpis { grid-template-columns: repeat(2, 1fr); }
   .fuel-grid { grid-template-columns: 1fr 1fr; }
   .app { padding: 20px 24px 50px; }
   .row-date { max-width: 150px; }
@@ -476,4 +478,8 @@ input[type="checkbox"] {
   .row-desc-amount .amount-input,
   .row-desc-amount .row-paid,
   .row-desc-amount .row-remove { order: 0; margin-left: 0; }
+}
+
+@media (min-width: 900px) {
+  .kpis { grid-template-columns: repeat(4, 1fr); }
 }

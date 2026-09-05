@@ -59,7 +59,7 @@
       { id: genId(), desc: "Afbetaling Seat", amount: 308.31 },
       { id: genId(), desc: "Mutualiteit", amount: 35.65 },
       { id: genId(), desc: "Crèche", amount: 0.00 }
-    ];
+    ].map((b) => Object.assign(b, { paid: false }));
   }
 
   function defaultSubscriptions() {
@@ -108,7 +108,7 @@
         children: (prevIncome.children || []).map((c) => ({ id: genId(), name: c.name || "", amount: num(c.amount) })),
         extra: []
       },
-      fixedBills: (prev.fixedBills || []).map((b) => ({ id: genId(), desc: b.desc || "", amount: num(b.amount) })),
+      fixedBills: (prev.fixedBills || []).map((b) => ({ id: genId(), desc: b.desc || "", amount: num(b.amount), paid: false })),
       buffer: num(prev.buffer),
       partnerContribution: num(prev.partnerContribution),
       variableExpenses: [],
@@ -122,7 +122,7 @@
     data.income.salary = num(data.income.salary);
     data.income.children = (data.income.children || []).map((c) => ({ id: c.id || genId(), name: c.name || "", amount: num(c.amount) }));
     data.income.extra = (data.income.extra || []).map((e) => ({ id: e.id || genId(), desc: e.desc || "", amount: num(e.amount) }));
-    data.fixedBills = (data.fixedBills || []).map((b) => ({ id: b.id || genId(), desc: b.desc || "", amount: num(b.amount) }));
+    data.fixedBills = (data.fixedBills || []).map((b) => ({ id: b.id || genId(), desc: b.desc || "", amount: num(b.amount), paid: !!b.paid }));
     data.buffer = num(data.buffer);
     data.partnerContribution = num(data.partnerContribution);
     data.variableExpenses = (data.variableExpenses || []).map((v) => ({ id: v.id || genId(), date: v.date || "", desc: v.desc || "", amount: num(v.amount), paid: !!v.paid }));
@@ -385,6 +385,8 @@
     const totalIncome = num(d.income.salary) + sum(d.income.children, "amount") + sum(d.income.extra, "amount");
     const totalFixed = sum(d.fixedBills, "amount");
     const toTransfer = Math.max(0, totalFixed + num(d.buffer) - num(d.partnerContribution));
+    const paidFixed = sum(d.fixedBills.filter((b) => b.paid), "amount");
+    const remainingOnAccount = Math.max(0, toTransfer - paidFixed);
     const variableBudget = totalIncome - toTransfer;
     const totalVariable = sum(d.variableExpenses, "amount");
     const totalSubs = sum(d.subscriptions, "amount");
@@ -398,6 +400,7 @@
     document.getElementById("total-fuel-seat").textContent = formatEUR(sum(d.fuel.seat, "amount"));
 
     document.getElementById("kpi-transfer").textContent = formatEUR(toTransfer);
+    document.getElementById("kpi-remaining").textContent = formatEUR(remainingOnAccount);
     document.getElementById("kpi-budget").textContent = formatEUR(variableBudget);
     document.getElementById("kpi-after").textContent = formatEUR(afterPaying);
 
@@ -498,6 +501,7 @@
       '<input type="text" class="bill-desc" placeholder="Omschrijving" maxlength="80">' +
       '<div class="amount-input"><span class="amount-prefix">€</span>' +
       '<input type="number" class="bill-amount" step="0.01" min="0" inputmode="decimal"></div>' +
+      '<label class="row-paid"><input type="checkbox" class="bill-paid">betaald</label>' +
       '<button type="button" class="row-remove" aria-label="Verwijder factuur">×</button>';
 
     row.querySelector(".bill-desc").addEventListener("input", (e) => {
@@ -506,6 +510,12 @@
     });
     row.querySelector(".bill-amount").addEventListener("input", (e) => {
       updateItemInList(state.data.fixedBills, item.id, { amount: num(e.target.value) });
+      renderKPIs();
+      scheduleSave();
+    });
+    row.querySelector(".bill-paid").addEventListener("change", (e) => {
+      updateItemInList(state.data.fixedBills, item.id, { paid: e.target.checked });
+      row.classList.toggle("is-paid", e.target.checked);
       renderKPIs();
       scheduleSave();
     });
@@ -522,6 +532,9 @@
     syncList(document.getElementById("fixed-bills-list"), state.data.fixedBills, buildFixedBillRow, (row, item) => {
       setValueIfNotFocused(row.querySelector(".bill-desc"), item.desc);
       setValueIfNotFocused(row.querySelector(".bill-amount"), item.amount);
+      const paidBox = row.querySelector(".bill-paid");
+      if (document.activeElement !== paidBox) paidBox.checked = !!item.paid;
+      row.classList.toggle("is-paid", !!item.paid);
     });
   }
 
