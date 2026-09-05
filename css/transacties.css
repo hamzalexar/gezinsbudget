@@ -69,6 +69,24 @@
 }
 .tx-badge-known { color: var(--accent); }
 .tx-badge-income { color: var(--positive); }
+.tx-badge-account { font-weight: 700; }
+.tx-badge-flag {
+  color: var(--negative);
+  background: var(--negative-bg);
+  border-color: transparent;
+}
+
+.row-tx.tx-flagged { border-color: var(--negative); }
+
+.tx-internal-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 
 .row-tx .row-category { flex-basis: auto; flex-shrink: 0; }
 

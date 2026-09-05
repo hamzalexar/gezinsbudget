@@ -105,18 +105,51 @@
   }
 
   // ==========================================================================
-  // CSV inlezen (Argenta-export) en categoriseren
+  // Eigen rekeningen — gebruikt om onderlinge overschrijvingen (tussen de
+  // gemeenschappelijke rekening, je persoonlijke rekening en de familiale
+  // spaarpotjes/kinderrekeningen) uit te sluiten bij inkomsten/uitgaven,
+  // zodat geld dat je gewoon binnen het gezin verplaatst niet dubbel telt.
   //
-  // De bank levert zelf al een ruwe `category`, maar die is voor het gros
-  // van de kaartbetalingen/cash gewoon "Overig" of "Kaartbetaling/Cash" —
-  // niet bruikbaar voor een echte uitgavenanalyse. We verfijnen dat met
-  // trefwoorden op counterparty_name/message naar dezelfde 16 categorieën
-  // die de rest van de app gebruikt, zodat dit or straks vergelijkbaar is
-  // met de handmatig ingevoerde vaste/variabele kosten.
+  // Nieuwe eigen rekening tegengekomen (bv. een nieuw spaarpotje)? Voeg het
+  // IBAN hier toe (zonder spaties), of vink de transactie manueel aan als
+  // "intern" in het controlescherm na het inlezen.
+  // ==========================================================================
+
+  const OWN_ACCOUNTS = new Set([
+    "BE29973520592364", // Gemeenschappelijke rekening
+    "BE95973518380158", // Persoonlijke rekening (Hamza)
+    "BE08973518715113", // "Vakantie"-spaarpot
+    "BE88973518417241", // "Ayman"
+    "BE71973518536469", // "Yasmine Ajouaou Zajgaoui"
+    "BE94973518715214", // "Liyana"
+    "BE73973521804460" // "Spaarrekening Yasmine"
+  ]);
+
+  const ACCOUNT_LABELS = {
+    BE29973520592364: "Gemeenschappelijke rekening",
+    BE95973518380158: "Persoonlijke rekening"
+  };
+
+  function normalizeIBAN(s) {
+    return String(s || "").replace(/\s+/g, "").toUpperCase();
+  }
+  function accountLabel(iban) {
+    const norm = normalizeIBAN(iban);
+    return ACCOUNT_LABELS[norm] || norm || "(onbekende rekening)";
+  }
+
+  // ==========================================================================
+  // Bankbestand inlezen (Argenta-export, .xlsx/.xls/.csv) en categoriseren
+  //
+  // Argenta levert zelf geen categorie of "is intern"-vlag mee — dat
+  // berekenen we hier zelf: categorie via trefwoorden op naam
+  // tegenpartij/mededeling, en "intern" via vergelijking van het
+  // tegenpartij-rekeningnummer met OWN_ACCOUNTS hierboven.
   // ==========================================================================
 
   function parseAmount(raw) {
     if (raw == null || raw === "") return 0;
+    if (typeof raw === "number") return raw;
     let s = String(raw).trim();
     const hasComma = s.indexOf(",") !== -1;
     const hasDot = s.indexOf(".") !== -1;
@@ -129,55 +162,63 @@
     return isNaN(n) ? 0 : n;
   }
 
-  function parseBool(v) {
-    return String(v).trim().toLowerCase() === "true";
+  function formatDateCell(v) {
+    if (v instanceof Date) {
+      const pad = (n) => String(n).padStart(2, "0");
+      return v.getUTCFullYear() + "-" + pad(v.getUTCMonth() + 1) + "-" + pad(v.getUTCDate());
+    }
+    return String(v || "").trim();
   }
 
-  // Argenta's eigen ruwe categorie -> onze categorie, voor de gevallen die
-  // niet via een trefwoord herkend worden.
-  const RAW_CATEGORY_DEFAULTS = {
-    "huur/wonen": "wonen",
-    "brandstof": "transport",
-    "abonnementen": "abonnement"
-  };
-  const RAW_CATEGORY_INCOME = ["inkomsten (overig)", "inkomsten"];
-
-  // Trefwoorden (kleine letters) op counterparty_name + message. Eerste
-  // match wint — bedoeld als startpunt, corrigeer gerust individuele
-  // transacties in het controle-scherm na het inlezen.
+  // Trefwoorden (kleine letters) op naam tegenpartij + mededeling. Eerste
+  // match wint — startpunt op basis van jouw echte transacties, corrigeer
+  // gerust individuele posten in het controlescherm na het inlezen.
   const KEYWORD_RULES = [
-    { cat: "boodschappen", keywords: ["colruyt", "delhaize", "carrefour", "aldi", "lidl", "okay", "spar", "intermarche", "cora", "makro", "alvo", "bio-planet", "jumbo", "proxy"] },
-    { cat: "eten", keywords: ["mcdonald", "quick", "kfc", "burger king", "subway", "domino", "pizza", "restaurant", "brasserie", "cafe", "café", "frituur", "friterie", "snack", "ubereats", "uber eats", "deliveroo", "takeaway", "just eat"] },
-    { cat: "transport", keywords: ["total", "q8", " esso", "shell", "texaco", "lukoil", "dats 24", "nmbs", "sncb", "de lijn", "delijn", "stib", " tec ", "uber", "taxi", "parking", "q-park", "cambio", "tankstation"] },
+    { cat: "eten", keywords: ["ikea hasselt-food", "ikea-food", "mcdonald", "quick", "kfc", "burger king", "subway", "domino", "pizza", "restaurant", "brasserie", "cafe", "café", "frituur", "friterie", "snack", "ubereats", "uber eats", "deliveroo", "takeaway", "just eat"] },
+    { cat: "boodschappen", keywords: ["colruyt", "delhaize", "carrefour", "aldi", "lidl", "okay", "spar", "intermarche", "cora ", "makro", "alvo", "bio-planet", "jumbo", "proxy"] },
+    { cat: "transport", keywords: ["total", "q8", " esso", "shell", "texaco", "lukoil", "dats 24", "nmbs", "sncb", "de lijn", "delijn", "stib", " tec ", "uber", "taxi", "parking", "q-park", "cambio", "tankstation", "bipandgo"] },
     { cat: "kleding", keywords: ["h&m", "zara", "bershka", "primark", "c&a", "zeeman", "jbc", "decathlon", "jd sports", "veritas", "orchestra"] },
-    { cat: "elektronica", keywords: ["mediamarkt", "coolblue", "krefel", "vanden borre", "fnac", "apple.com", "samsung"] },
-    { cat: "verzorging", keywords: ["apotheek", "pharmacie", "kruidvat", "ici paris", "kapper", "coiffure", "wellness"] },
+    { cat: "elektronica", keywords: ["mediamarkt", "coolblue", "krefel", "vanden borre", "fnac", "apple.com", "samsung", "ikea"] },
+    { cat: "verzorging", keywords: ["apotheek", "pharmacie", "kruidvat", "ici paris", "kapper", "coiffure", "wellness", "dr. ", "huisarts", "tandarts", "kinesist"] },
     { cat: "vrijetijd", keywords: ["cinema", "kinepolis", "bioscoop", "pathe", "steam", "playstation", "xbox", "bol.com", "zwembad", "fitness", "basic-fit", "basic fit", "jims"] },
     { cat: "abonnement", keywords: ["netflix", "spotify", "disney", "hbo", "dazn", "amazon prime", "youtube premium"] },
     { cat: "elec", keywords: ["engie", "luminus", "eneco", "totalenergies"] },
-    { cat: "water", keywords: ["vmw", "farys", "pidpa", "water-link"] },
+    { cat: "water", keywords: ["vmw", "farys", "pidpa", "water-link", "watergroep"] },
     { cat: "internet", keywords: ["proximus", "telenet", "orange belgium", " voo ", "edpnet", "scarlet"] },
-    { cat: "verzekering", keywords: ["ethias", "axa", "ag insurance", "baloise", "dkv", "allianz", "p&v", "belfius insurance", "nn insurance"] },
-    { cat: "lening", keywords: ["cetelem", "cofidis", "alpha credit"] },
-    { cat: "wonen", keywords: ["syndic", "immo "] }
+    { cat: "verzekering", keywords: ["ethias", "axa", "ag insurance", "baloise", "dkv", "allianz", "p&v", "belfius insurance", "nn insurance", "cm verzekeringen", "cm-mediko", "mutualiteit"] },
+    { cat: "lening", keywords: ["cetelem", "cofidis", "alpha credit", "cora services"] },
+    { cat: "wonen", keywords: ["syndic", "immo ", "wonen in limburg", "huurgeld"] }
   ];
 
-  function refineExpenseCategory(row) {
-    const haystack = (" " + (row.counterparty_name || "") + " " + (row.message || "") + " ").toLowerCase();
+  function refineExpenseCategory(counterpartyName, message) {
+    const haystack = (" " + (counterpartyName || "") + " " + (message || "") + " ").toLowerCase();
     for (const rule of KEYWORD_RULES) {
       if (rule.keywords.some((kw) => haystack.indexOf(kw) !== -1)) return rule.cat;
     }
-    const rawKey = String(row.category || "").trim().toLowerCase();
-    if (RAW_CATEGORY_DEFAULTS[rawKey]) return RAW_CATEGORY_DEFAULTS[rawKey];
     return "overig";
   }
 
-  function classifyRow(row, amountNum, isInternal) {
-    if (isInternal) return { kind: "internal", category: null };
-    const rawKey = String(row.category || "").trim().toLowerCase();
-    if (amountNum > 0 || RAW_CATEGORY_INCOME.indexOf(rawKey) !== -1) return { kind: "income", category: null };
-    if (amountNum === 0) return { kind: "zero", category: null };
-    return { kind: "expense", category: refineExpenseCategory(row) };
+  // "Cross reference": de gemeenschappelijke rekening zou normaal enkel
+  // kindergeld als inkomsten mogen ontvangen (alles wat de rest binnenkomt,
+  // komt van een eigen/familierekening en is dus al "intern"). Inkomend
+  // geld op die rekening dat GEEN kindergeld is en NIET van een eigen
+  // rekening komt, wordt hier apart gemarkeerd zodat je het kan nakijken
+  // (bv. een kredietopname, huurinkomsten, of een onverwachte overschrijving).
+  const CHILD_BENEFIT_KEYWORDS = ["groeipakket", "parentia", "gezinsbijslag", "schooltoeslag", "kindergeld"];
+  function isChildBenefit(counterpartyName, message) {
+    const haystack = ((counterpartyName || "") + " " + (message || "")).toLowerCase();
+    return CHILD_BENEFIT_KEYWORDS.some((kw) => haystack.indexOf(kw) !== -1);
+  }
+
+  function classifyRow(counterpartyName, message, amountNum, isInternal, account) {
+    if (isInternal) return { kind: "internal", category: null, flagged: false };
+    if (amountNum > 0) {
+      const isJoint = normalizeIBAN(account) === "BE29973520592364";
+      const flagged = isJoint && !isChildBenefit(counterpartyName, message);
+      return { kind: "income", category: null, flagged };
+    }
+    if (amountNum === 0) return { kind: "zero", category: null, flagged: false };
+    return { kind: "expense", category: refineExpenseCategory(counterpartyName, message), flagged: false };
   }
 
   function sanitizeId(s) {
@@ -188,38 +229,43 @@
     for (let i = 0; i < basis.length; i++) hash = ((hash << 5) + hash + basis.charCodeAt(i)) | 0;
     return (hash >>> 0).toString(36);
   }
-  // Stabiel document-ID zodat een dubbele/overlappende upload dezelfde
-  // transactie gewoon overschrijft (upsert) i.p.v. dubbel te tellen.
+  // Stabiel document-ID (bij voorkeur de bankreferentie) zodat een
+  // dubbele/overlappende upload dezelfde transactie gewoon overschrijft
+  // (upsert) i.p.v. dubbel te tellen.
   function transactionId(row) {
-    const ref = row.reference && String(row.reference).trim();
+    const ref = row["Referentie"] && String(row["Referentie"]).trim();
     if (ref) return "ref-" + sanitizeId(ref);
-    const basis = [row.date, row.amount, row.account, row.counterparty_account, row.message]
+    const basis = [formatDateCell(row["Boekdatum"]), row["Bedrag"], row["Rekening"], row["Rekening tegenpartij"], row["Mededeling"]]
       .map((x) => (x == null ? "" : String(x)))
       .join("|");
     return "h-" + hashId(basis);
   }
 
   function buildTransaction(row) {
-    const amountNum = parseAmount(row.amount);
-    const isInternal = parseBool(row.is_internal_transfer);
-    const cls = classifyRow(row, amountNum, isInternal);
+    const amountNum = parseAmount(row["Bedrag"]);
+    const account = normalizeIBAN(row["Rekening"]);
+    const counterpartyAccount = normalizeIBAN(row["Rekening tegenpartij"]);
+    const isInternal = OWN_ACCOUNTS.has(counterpartyAccount);
+    const counterpartyName = String(row["Naam tegenpartij"] || "").trim();
+    const message = String(row["Mededeling"] || "").trim();
+    const cls = classifyRow(counterpartyName, message, amountNum, isInternal, account);
     return {
       id: transactionId(row),
-      date: (row.date || "").trim(),
+      date: formatDateCell(row["Boekdatum"]),
       amount: amountNum,
-      currency: (row.currency || "EUR").trim(),
-      rawCategory: (row.category || "").trim(),
+      currency: String(row["Munt"] || "EUR").trim(),
       category: cls.category,
       kind: cls.kind,
-      type: (row.type || "").trim(),
-      counterpartyName: (row.counterparty_name || "").trim(),
-      counterpartyAccount: (row.counterparty_account || "").trim(),
-      message: (row.message || "").trim(),
-      account: (row.account || "").trim(),
+      flagged: cls.flagged,
+      type: String(row["Beschrijving"] || "").trim(),
+      counterpartyName,
+      counterpartyAccount,
+      message,
+      account,
       isInternalTransfer: isInternal,
-      valueDate: (row.value_date || "").trim(),
-      transactionDate: (row.transaction_date || "").trim(),
-      reference: (row.reference || "").trim()
+      valueDate: formatDateCell(row["Valutadatum"]),
+      transactionDate: formatDateCell(row["Verrichtingsdatum"]),
+      reference: String(row["Referentie"] || "").trim()
     };
   }
 
@@ -229,44 +275,65 @@
 
   let parsedRows = [];
   let categoryOverrides = {};
+  let internalOverrides = {};
 
   function bindUpload() {
     document.getElementById("csv-file-input").addEventListener("change", (e) => {
-      const file = e.target.files[0];
+      const files = Array.prototype.slice.call(e.target.files || []);
       e.target.value = "";
-      if (file) handleFile(file);
+      if (files.length) handleFiles(files);
     });
     document.getElementById("preview-list").addEventListener("change", (e) => {
-      if (!e.target.classList.contains("tx-cat-select")) return;
-      categoryOverrides[e.target.getAttribute("data-id")] = e.target.value;
+      if (e.target.classList.contains("tx-cat-select")) {
+        categoryOverrides[e.target.getAttribute("data-id")] = e.target.value;
+      } else if (e.target.classList.contains("tx-internal-toggle")) {
+        internalOverrides[e.target.getAttribute("data-id")] = e.target.checked;
+      }
     });
     document.getElementById("confirm-import").addEventListener("click", onConfirmImport);
   }
 
-  function handleFile(file) {
-    setUploadStatus("Bestand wordt gelezen…", false);
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        if (results.errors && results.errors.length) {
-          console.warn("CSV parse-waarschuwingen", results.errors);
+  function readWorkbookRows(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, { type: "array", cellDates: true });
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+          resolve(rows);
+        } catch (err) {
+          reject(err);
         }
-        const rows = results.data.map(buildTransaction).filter((r) => r.date);
-        if (!rows.length) {
-          setUploadStatus("Geen bruikbare rijen gevonden in " + file.name + ".", true);
+      };
+      reader.onerror = () => reject(reader.error || new Error("Bestand kon niet gelezen worden"));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  function handleFiles(files) {
+    setUploadStatus("Bestand(en) worden gelezen…", false);
+    Promise.all(files.map((f) => readWorkbookRows(f).then((rows) => ({ file: f, rows }))))
+      .then((results) => {
+        const rows = [];
+        results.forEach((r) => r.rows.forEach((row) => rows.push(row)));
+        const transactions = rows.map(buildTransaction).filter((r) => r.date);
+        if (!transactions.length) {
+          setUploadStatus("Geen bruikbare rijen gevonden.", true);
           return;
         }
-        parsedRows = rows;
+        parsedRows = transactions;
         categoryOverrides = {};
-        renderPreview(rows);
-        setUploadStatus(rows.length + " transacties ingelezen uit " + file.name + " — controleer de categorieën hieronder.", false);
-      },
-      error: (err) => {
-        console.error("CSV parse-fout", err);
+        internalOverrides = {};
+        renderPreview(transactions);
+        const names = results.map((r) => r.file.name).join(", ");
+        setUploadStatus(transactions.length + " transacties ingelezen uit " + names + " — controleer hieronder.", false);
+      })
+      .catch((err) => {
+        console.error("Bestand parse-fout", err);
         setUploadStatus("Kon het bestand niet lezen: " + err.message, true);
-      }
-    });
+      });
   }
 
   function renderPreview(rows) {
@@ -274,32 +341,46 @@
     const expenseCount = rows.filter((r) => r.kind === "expense").length;
     const incomeCount = rows.filter((r) => r.kind === "income").length;
     const internalCount = rows.filter((r) => r.kind === "internal").length;
+    const flaggedCount = rows.filter((r) => r.flagged).length;
 
     document.getElementById("preview-summary").textContent =
-      expenseCount + " uitgaven · " + incomeCount + " inkomsten · " + internalCount + " interne overschrijvingen (genegeerd)";
+      expenseCount + " uitgaven · " + incomeCount + " inkomsten · " + internalCount + " intern (genegeerd)" +
+      (flaggedCount ? " · " + flaggedCount + " te controleren" : "");
 
     const html = rows
       .map((r) => {
         const known = existingIds.has(r.id) ? '<span class="tx-badge tx-badge-known">al gekend</span>' : "";
         const desc = r.counterpartyName || r.message || "(geen omschrijving)";
         const amountClass = r.amount < 0 ? "negative" : r.amount > 0 ? "positive" : "";
+        const acctBadge = '<span class="tx-badge tx-badge-account">' + escapeHTML(accountLabel(r.account)) + "</span>";
+        const internalToggle =
+          '<label class="tx-internal-label"><input type="checkbox" class="tx-internal-toggle" data-id="' +
+          r.id +
+          '"' +
+          (r.kind === "internal" ? " checked" : "") +
+          "> intern</label>";
         let right;
-        if (r.kind === "expense") {
-          right = '<select class="row-category tx-cat-select" data-id="' + r.id + '">' + categoryOptionsHTML(r.category) + "</select>";
-        } else if (r.kind === "internal") {
-          right = '<span class="tx-badge">🔁 intern</span>';
+        if (r.kind === "internal") {
+          right = '<span class="tx-badge">🔁 intern</span>' + internalToggle;
         } else if (r.kind === "income") {
-          right = '<span class="tx-badge tx-badge-income">💰 inkomen</span>';
+          right = r.flagged
+            ? '<span class="tx-badge tx-badge-flag">⚠️ controleer</span>' + internalToggle
+            : '<span class="tx-badge tx-badge-income">💰 inkomen</span>' + internalToggle;
+        } else if (r.kind === "expense") {
+          right = '<select class="row-category tx-cat-select" data-id="' + r.id + '">' + categoryOptionsHTML(r.category) + "</select>" + internalToggle;
         } else {
           right = '<span class="tx-badge">—</span>';
         }
         return (
-          '<div class="row row-tx">' +
+          '<div class="row row-tx' +
+          (r.flagged ? " tx-flagged" : "") +
+          '">' +
           '<div class="tx-info"><span class="tx-date">' +
           escapeHTML(r.date) +
           "</span><span class=\"tx-desc\">" +
           escapeHTML(desc) +
           "</span>" +
+          acctBadge +
           known +
           "</div>" +
           '<span class="tx-amount ' +
@@ -341,10 +422,20 @@
   function onConfirmImport() {
     if (!parsedRows.length || !db) return;
     const rows = parsedRows.map((r) => {
-      if (r.kind === "expense" && categoryOverrides[r.id]) {
-        return Object.assign({}, r, { category: categoryOverrides[r.id] });
+      let row = r;
+      if (row.kind === "expense" && categoryOverrides[row.id]) {
+        row = Object.assign({}, row, { category: categoryOverrides[row.id] });
       }
-      return r;
+      if (Object.prototype.hasOwnProperty.call(internalOverrides, row.id) && internalOverrides[row.id] !== row.isInternalTransfer) {
+        const nowInternal = internalOverrides[row.id];
+        row = Object.assign({}, row, {
+          isInternalTransfer: nowInternal,
+          kind: nowInternal ? "internal" : row.amount > 0 ? "income" : row.amount < 0 ? "expense" : "zero",
+          category: nowInternal ? null : row.amount < 0 ? row.category || "overig" : null,
+          flagged: false
+        });
+      }
+      return row;
     });
     document.getElementById("confirm-import").disabled = true;
     setUploadStatus("Bezig met importeren…", false);
@@ -354,6 +445,7 @@
         document.getElementById("preview-card").classList.add("hidden");
         parsedRows = [];
         categoryOverrides = {};
+        internalOverrides = {};
       })
       .catch((err) => {
         console.error("Import mislukt", err);
@@ -520,6 +612,30 @@
       .join("");
   }
 
+  function renderFlaggedIncome(transactions) {
+    const section = document.getElementById("tx-flagged-section");
+    const flagged = transactions.filter((t) => t.flagged).sort((a, b) => (a.date < b.date ? 1 : -1));
+    section.classList.toggle("hidden", flagged.length === 0);
+    if (!flagged.length) return;
+    document.getElementById("tx-flagged-count").textContent = flagged.length;
+    document.getElementById("tx-flagged-table-body").innerHTML = flagged
+      .map((t) => {
+        const desc = t.counterpartyName || t.message || "(geen omschrijving)";
+        return (
+          "<tr><td>" +
+          escapeHTML(t.date) +
+          "</td><td>" +
+          escapeHTML(desc) +
+          "</td><td>" +
+          escapeHTML(t.message || "") +
+          "</td><td>" +
+          formatEUR(t.amount) +
+          "</td></tr>"
+        );
+      })
+      .join("");
+  }
+
   function renderDashboard() {
     const nonInternal = allTransactions.filter((t) => !t.isInternalTransfer);
     const totalIncome = nonInternal.filter((t) => t.amount > 0).reduce((a, t) => a + t.amount, 0);
@@ -539,6 +655,7 @@
     renderMonthlyChart(nonInternal);
     renderCategorySplit(nonInternal);
     renderTopExpenses(nonInternal);
+    renderFlaggedIncome(nonInternal);
   }
 
   let allTransactions = [];
