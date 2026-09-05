@@ -7,7 +7,7 @@
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%92%B6</text></svg>">
 <title>Gezinsbudget — Statistieken</title>
-<link rel="stylesheet" href="css/style.css?v=6">
+<link rel="stylesheet" href="css/style.css?v=7">
 <link rel="stylesheet" href="css/stats.css?v=7">
 </head>
 <body>
@@ -20,6 +20,7 @@
     </div>
     <div class="topbar-actions">
       <a href="index.html" class="icon-btn" aria-label="Terug naar budget" title="Terug naar budget">←</a>
+      <button type="button" class="icon-btn" data-logout aria-label="Uitloggen" title="Uitloggen">🚪</button>
       <div class="sync-status" id="sync-status" data-state="loading">
         <span class="sync-dot" aria-hidden="true"></span>
         <span class="sync-label" id="sync-label">Verbinden…</span>
@@ -138,13 +139,28 @@
     </div>
   </div>
 
+  <div id="login-overlay" class="login-overlay hidden">
+    <form class="login-box" id="login-form">
+      <h2>📊 Statistieken</h2>
+      <p class="login-hint">Log in om verder te gaan.</p>
+      <label for="login-email">E-mailadres</label>
+      <input type="email" id="login-email" autocomplete="username" required>
+      <label for="login-password">Wachtwoord</label>
+      <input type="password" id="login-password" autocomplete="current-password" required>
+      <p class="login-error hidden" id="login-error"></p>
+      <button type="submit" class="login-submit" id="login-submit">Inloggen</button>
+    </form>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 
 <script src="js/firebase-config.js?v=6"></script>
-<script src="js/stats.js?v=7"></script>
+<script src="js/auth.js?v=1"></script>
+<script src="js/stats.js?v=8"></script>
 </body>
 </html>

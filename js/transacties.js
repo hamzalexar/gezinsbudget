@@ -50,7 +50,6 @@
       return false;
     }
     try {
-      firebase.initializeApp(firebaseConfig);
       db = firebase.firestore();
       return true;
     } catch (err) {
@@ -688,6 +687,8 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     bindUpload();
-    if (initFirebase()) loadAndRender();
+    window.requireAuth(() => {
+      if (initFirebase()) loadAndRender();
+    });
   });
 })();

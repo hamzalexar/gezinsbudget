@@ -201,7 +201,6 @@
       return false;
     }
     try {
-      firebase.initializeApp(firebaseConfig);
       db = firebase.firestore();
       try {
         db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
@@ -1280,9 +1279,11 @@
     bindBackButtons();
     bindOverviewCards();
     document.getElementById("month-label").textContent = monthLabelOf(state.currentDate);
-    if (initFirebase()) {
-      loadCredits();
-      loadMonth(state.currentDate);
-    }
+    window.requireAuth(() => {
+      if (initFirebase()) {
+        loadCredits();
+        loadMonth(state.currentDate);
+      }
+    });
   });
 })();

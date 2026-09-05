@@ -51,7 +51,6 @@
       return false;
     }
     try {
-      firebase.initializeApp(firebaseConfig);
       db = firebase.firestore();
       return true;
     } catch (err) {
@@ -668,6 +667,8 @@
     bindTabs();
     bindCategoryTrendSelect();
     bindExportButtons();
-    if (initFirebase()) loadAndRender();
+    window.requireAuth(() => {
+      if (initFirebase()) loadAndRender();
+    });
   });
 })();

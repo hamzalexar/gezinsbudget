@@ -17,6 +17,7 @@ Een responsive, mobile-first webapp voor maandelijks huishoudbudgetbeheer, met *
 - **"Te betalen op rekening"-overzicht**: aparte sectiekaart die vaste facturen en kredieten van de maand samen als één lijst toont, met een betaald-vinkje per post — zo hoef je niet tussen Vaste facturen en Kredieten te wisselen om te zien wat daarvan nog moet gebeuren. Afvinken hier werkt rechtstreeks door naar die schermen en naar de KPI's bovenaan. Variabele uitgaven en abonnementen hebben elk al hun eigen scherm met betaald-vinkjes en staan daarom niet nog eens in dit overzicht.
 - **Statistieken**: aparte pagina met grafieken over alle opgeslagen maanden (inkomsten vs. uitgaven, variabele uitgaven/abonnementen per maand, budgetverdeling per maand, tankkosten per auto). Onderaan die pagina kan je je gegevens ook exporteren: maandtotalen (CSV), alle losse posten (CSV, elke vaste factuur/krediet/variabele uitgave/abonnement apart met maand en categorie), of een volledige back-up (JSON, alle maanden + kredieten + banktransacties in één bestand).
 - **Transacties (bank-export importeren)**: aparte pagina om periodiek (bv. maandelijks of per kwartaal) je Argenta-exports (.xlsx, per rekening) te uploaden — je mag de bestanden van al je rekeningen tegelijk selecteren. De transacties worden automatisch voorgecategoriseerd (op basis van tegenpartij/omschrijving) in dezelfde categorieën als de rest van de app — je kan dat voor het importeren nog corrigeren, en per transactie ook zelf "intern" aan-/uitvinken. Overschrijvingen tussen je eigen rekeningen (inclusief spaarpotjes/kinderrekeningen — zie `OWN_ACCOUNTS` in `js/transacties.js`, IBAN's zonder spaties, met commentaar erbij welke rekening het is) worden uitgesloten bij de totalen, zodat geld dat je gewoon binnen het gezin verplaatst niet dubbel telt. Inkomend geld op de gemeenschappelijke rekening dat geen kindergeld is en niet van een eigen rekening komt, wordt apart gemarkeerd ("⚠️ controleer") zodat je het kan nakijken (bv. een kredietopname of onverwachte overschrijving) — er is ook een apart dashboard-lijstje daarvoor. Toont verder inkomsten vs. uitgaven per maand, uitgaven per categorie en je grootste uitgaven. Een herhaalde/overlappende upload overschrijft gewoon dezelfde transacties (geen dubbeltelling), want elke transactie krijgt een stabiel document-ID op basis van de bankreferentie. Kom je een nieuwe eigen rekening tegen (bv. een nieuw spaarpotje) die nog niet herkend wordt? Voeg het IBAN toe aan `OWN_ACCOUNTS`, of vink de transactie manueel aan als "intern" in het controlescherm.
+- **Inloggen**: e-mailadres + wachtwoord (Firebase Authentication) vooraleer je gegevens te zien krijgt — zo kan niet zomaar iedereen die de link vindt meekijken of bewerken. Uitloggen kan via het 🚪-icoontje in de titelbalk van elke pagina.
 - **Licht/donker thema**: volgt automatisch de systeeminstelling van je toestel.
 
 ## Bestandsstructuur
@@ -32,6 +33,7 @@ gezinsbudget/
 │   └── transacties.css
 ├── js/
 │   ├── firebase-config.js   <- hier vul je je eigen Firebase-gegevens in
+│   ├── auth.js              <- inlogscherm, gedeeld door alle 3 pagina's
 │   ├── app.js
 │   ├── stats.js
 │   └── transacties.js
@@ -78,9 +80,17 @@ De app gebruikt **Firebase Firestore** als realtime databank, zodat jij en je pa
 
    > Deze waarden zijn **geen geheime sleutels** — ze zijn zichtbaar in de broncode van elke website die Firebase gebruikt. De echte beveiliging gebeurt via de Firestore Security Rules (zie hieronder), niet door deze config geheim te houden.
 
-### 4. Firestore Security Rules instellen
+### 4. Inloggen instellen (Firebase Authentication)
 
-Omdat de app geen inlogsysteem heeft (gewoon jij en je partner die de link openen), moeten de Firestore-regels toegang toelaten tot enkel de `months`-collectie, zonder dat de databank helemaal openstaat voor de hele wereld om te vinden/misbruiken.
+De app toont een inlogscherm (e-mailadres + wachtwoord) vooraleer je gegevens te zien krijgt, zodat niet zomaar iedereen die de link vindt kan meekijken of bewerken.
+
+1. Ga in het linkermenu naar **Build → Authentication** en klik op **"Aan de slag"** (Get started).
+2. Kies bij **Sign-in method** de provider **E-mail/wachtwoord** (Email/Password) en schakel die in (Enable) — laat "E-maillink" gerust uit.
+3. Ga naar het tabblad **Users** en klik op **"Gebruiker toevoegen"** (Add user) — maak een account voor jezelf aan (e-mailadres + wachtwoord naar keuze) en herhaal dit voor je partner.
+
+### 5. Firestore Security Rules instellen
+
+Nu er een echt inlogsysteem is, mogen de Firestore-regels toegang beperken tot enkel aangemelde gebruikers, zonder dat de databank openstaat voor iedereen die de Firebase-config kent.
 
 Ga naar **Firestore Database → Regels** (Rules) en gebruik bijvoorbeeld:
 
@@ -89,33 +99,28 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /months/{monthId} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
     match /credits/{creditId} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
     match /bankTransactions/{transactionId} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
   }
 }
 ```
 
-> **Let op:** dit staat lezen/schrijven toe voor iedereen die de exacte Firebase-config kent (dus in de praktijk: iedereen die de broncode van jouw site kan bekijken). Voor een privé gezinsbudget zonder gevoelige/financiële identificatiegegevens is dit meestal aanvaardbaar, maar wil je het steviger afschermen, dan kan je Firebase Authentication toevoegen (bv. met een simpele e-mail/wachtwoord-login voor jou en je partner) en de regel vervangen door:
->
-> ```
-> allow read, write: if request.auth != null;
-> ```
->
-> en vervolgens inloggen toevoegen aan de app. Dit valt buiten de basisopzet van dit project, maar Firebase Authentication is met enkele extra regels toe te voegen mocht je dit willen.
+> **Let op:** heb je nog een oudere versie van deze app zonder login gebruikt (regels met `allow read, write: if true;`)? Zet eerst stap 4 hierboven op (provider inschakelen + minstens één gebruiker aanmaken) vóór je deze regels publiceert — anders kan niemand, ook jijzelf niet, nog bij de gegevens tot je bent ingelogd.
 
 Klik op **"Publiceren"** (Publish).
 
-### 5. Testen
+### 6. Testen
 
 1. Open `index.html` in je browser (gewoon dubbelklikken, of host het bv. via **GitHub Pages**: Settings → Pages → Deploy from branch).
-2. Als de configuratie correct is ingevuld, zie je bovenaan **"Gesynchroniseerd"** verschijnen en worden de standaardgegevens van de huidige maand geladen.
-3. Open de app op een tweede toestel (of tweede browsertab) — wijzigingen die je op het ene toestel maakt, verschijnen automatisch op het andere.
+2. Log in met het e-mailadres/wachtwoord dat je in stap 4 hebt aangemaakt.
+3. Als de configuratie correct is ingevuld, zie je bovenaan **"Gesynchroniseerd"** verschijnen en worden de standaardgegevens van de huidige maand geladen.
+4. Open de app op een tweede toestel (of tweede browsertab) — wijzigingen die je op het ene toestel maakt, verschijnen automatisch op het andere. Elk toestel/tab moet wel apart inloggen (via 🚪 in de titelbalk kan je uitloggen).
 
 ### Hosten via GitHub Pages (optioneel)
 
