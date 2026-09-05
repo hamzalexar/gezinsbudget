@@ -10,11 +10,12 @@
 // Security Rules die je instelt in de Firebase Console (zie README.md).
 // ============================================================================
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "VUL_HIER_JE_API_KEY_IN",
-  authDomain: "VUL_HIER_JE_PROJECT_IN.firebaseapp.com",
-  projectId: "VUL_HIER_JE_PROJECT_ID_IN",
-  storageBucket: "VUL_HIER_JE_PROJECT_IN.appspot.com",
-  messagingSenderId: "VUL_HIER_JE_SENDER_ID_IN",
-  appId: "VUL_HIER_JE_APP_ID_IN"
+  apiKey: "AIzaSyDfZcXMTpRWYiYNuOX5AqRXuECl2YhC3LA",
+  authDomain: "gezinsbudget-9628a.firebaseapp.com",
+  projectId: "gezinsbudget-9628a",
+  storageBucket: "gezinsbudget-9628a.firebasestorage.app",
+  messagingSenderId: "95475515674",
+  appId: "1:95475515674:web:7885983a3deee0269faca3"
 };
