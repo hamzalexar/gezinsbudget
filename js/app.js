@@ -450,10 +450,11 @@
     const remainingOnAccount = Math.max(0, toTransfer - paidFixed);
     const totalVariable = sum(d.variableExpenses, "amount");
     const totalSubs = sum(d.subscriptions, "amount");
+    const totalCosts = totalFixed + totalVariable + totalSubs;
     // Vrij te besteden: één rechtstreeks, actueel cijfer — inkomsten min ALLES
     // wat het huishouden deze maand kost (vast + kredieten + variabel +
     // abonnementen). Daalt automatisch naarmate je uitgaven ingeeft.
-    const vrijTeBesteden = totalIncome - (totalFixed + totalVariable + totalSubs);
+    const vrijTeBesteden = totalIncome - totalCosts;
 
     document.getElementById("total-income").textContent = formatEUR(totalIncome);
     document.getElementById("total-fixed").textContent = formatEUR(totalFixed);
@@ -463,6 +464,7 @@
     document.getElementById("total-fuel-seat").textContent = formatEUR(sum(d.fuel.seat, "amount"));
 
     document.getElementById("kpi-transfer").textContent = formatEUR(remainingOnAccount);
+    document.getElementById("kpi-total-costs").textContent = formatEUR(totalCosts);
     document.getElementById("kpi-free").textContent = formatEUR(vrijTeBesteden);
     document.getElementById("kpi-free-card").classList.toggle("negative", vrijTeBesteden < 0);
     renderTeBetalenList();
