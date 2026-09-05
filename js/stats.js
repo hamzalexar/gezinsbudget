@@ -101,11 +101,15 @@
       text: style.getPropertyValue("--text").trim(),
       muted: style.getPropertyValue("--text-muted").trim(),
       border: style.getPropertyValue("--border").trim(),
-      accent: style.getPropertyValue("--accent").trim(),
-      accent2: style.getPropertyValue("--accent-2").trim(),
       positive: style.getPropertyValue("--positive").trim(),
       negative: style.getPropertyValue("--negative").trim(),
-      warning: style.getPropertyValue("--warning").trim()
+      // Distinct, clearly-separable hues for comparing categories within a
+      // chart — the UI's --accent/--accent-2 are both blue (by design, for
+      // subtle gradients elsewhere) and too close to each other to tell
+      // apart in a bar/donut chart, so charts use their own palette instead.
+      blue: "#3b82f6",
+      amber: "#f59e0b",
+      violet: "#8b5cf6"
     };
   }
 
@@ -181,8 +185,8 @@
       data: {
         labels,
         datasets: [
-          { label: "Variabele uitgaven", data: monthStats.map((m) => m.totalVariable), backgroundColor: colors.accent },
-          { label: "Abonnementen", data: monthStats.map((m) => m.totalSubs), backgroundColor: colors.accent2 }
+          { label: "Variabele uitgaven", data: monthStats.map((m) => m.totalVariable), backgroundColor: colors.violet },
+          { label: "Abonnementen", data: monthStats.map((m) => m.totalSubs), backgroundColor: colors.amber }
         ]
       },
       options: baseOptions(colors)
@@ -193,8 +197,8 @@
       data: {
         labels,
         datasets: [
-          { label: "Dacia", data: monthStats.map((m) => m.fuelDacia), backgroundColor: colors.warning },
-          { label: "Seat", data: monthStats.map((m) => m.fuelSeat), backgroundColor: colors.accent }
+          { label: "Dacia", data: monthStats.map((m) => m.fuelDacia), backgroundColor: colors.amber },
+          { label: "Seat", data: monthStats.map((m) => m.fuelSeat), backgroundColor: colors.blue }
         ]
       },
       options: baseOptions(colors)
@@ -227,9 +231,9 @@
     document.getElementById("split-month-label").textContent = monthLabelLong(monthStat.monthId);
 
     const categories = [
-      { label: "Vaste facturen", amount: monthStat.totalFixed, color: colors.accent },
-      { label: "Abonnementen", amount: monthStat.totalSubs, color: colors.accent2 },
-      { label: "Variabele uitgaven", amount: monthStat.totalVariable, color: colors.warning }
+      { label: "Vaste facturen", amount: monthStat.totalFixed, color: colors.blue },
+      { label: "Abonnementen", amount: monthStat.totalSubs, color: colors.amber },
+      { label: "Variabele uitgaven", amount: monthStat.totalVariable, color: colors.violet }
     ];
     const total = categories.reduce((a, c) => a + c.amount, 0);
 
