@@ -447,6 +447,155 @@
   }
 
   // ==========================================================================
+  // Exporteren
+  // ==========================================================================
+
+  function setExportStatus(text, isError) {
+    const el = document.getElementById("export-status");
+    el.textContent = text;
+    el.classList.remove("hidden");
+    el.classList.toggle("export-status-error", !!isError);
+  }
+
+  function csvEscape(v) {
+    const s = v == null ? "" : String(v);
+    return /[",\r\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  function toCSV(headers, rows) {
+    const lines = [headers.map(csvEscape).join(",")];
+    rows.forEach((r) => lines.push(r.map(csvEscape).join(",")));
+    // BOM vooraan zodat Excel het bestand herkent als UTF-8 (anders lopen
+    // accenten/€ fout).
+    return "﻿" + lines.join("\r\n");
+  }
+
+  function downloadFile(filename, content, mime) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function todayStamp() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  }
+
+  function sortedMonthDocs() {
+    return (latestMonthDocs || [])
+      .map((d) => ({ id: d.id, data: d.data() || {} }))
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  }
+
+  function exportMonthlySummary() {
+    const months = sortedMonthDocs();
+    if (!months.length) {
+      setExportStatus("Nog geen gegevens om te exporteren.", true);
+      return;
+    }
+    const headers = [
+      "Maand", "Inkomsten", "Vaste facturen", "Kredieten", "Variabele uitgaven",
+      "Abonnementen", "Totale kosten", "Overschot", "Tanken Dacia", "Tanken Seat"
+    ];
+    const rows = months.map(({ id, data }) => {
+      const income = data.income || {};
+      const totalIncome = num(income.salary) + sum(income.children, "amount") + sum(income.extra, "amount");
+      const activeCredits = latestCredits.filter((c) => isCreditActiveInMonth(c, id));
+      const fixedOnly = sum(data.fixedBills, "amount");
+      const creditsOnly = sum(activeCredits, "amount");
+      const variable = sum(data.variableExpenses, "amount");
+      const subs = sum(data.subscriptions, "amount");
+      const totalCosts = fixedOnly + creditsOnly + variable + subs;
+      const fuel = data.fuel || {};
+      return [
+        id, totalIncome, fixedOnly, creditsOnly, variable, subs, totalCosts, totalIncome - totalCosts,
+        sum(fuel.dacia, "amount"), sum(fuel.seat, "amount")
+      ].map((v) => (typeof v === "number" ? v.toFixed(2) : v));
+    });
+    downloadFile("gezinsbudget-maandtotalen-" + todayStamp() + ".csv", toCSV(headers, rows), "text/csv;charset=utf-8");
+    setExportStatus("Maandtotalen gedownload.", false);
+  }
+
+  function exportLineItems() {
+    const months = sortedMonthDocs();
+    if (!months.length) {
+      setExportStatus("Nog geen gegevens om te exporteren.", true);
+      return;
+    }
+    const headers = ["Maand", "Type", "Datum", "Omschrijving", "Categorie", "Bedrag", "Betaald"];
+    const rows = [];
+    months.forEach(({ id, data }) => {
+      (data.fixedBills || []).forEach((b) => {
+        rows.push([id, "Vaste factuur", "", b.desc || "", categoryMeta(b.category).label, num(b.amount).toFixed(2), b.paid ? "Ja" : "Nee"]);
+      });
+      latestCredits
+        .filter((c) => isCreditActiveInMonth(c, id))
+        .forEach((c) => {
+          const paid = (data.paidCreditIds || []).includes(c.id);
+          rows.push([id, "Krediet", "", c.desc || "", categoryMeta(c.category).label, num(c.amount).toFixed(2), paid ? "Ja" : "Nee"]);
+        });
+      (data.variableExpenses || []).forEach((v) => {
+        rows.push([id, "Variabele uitgave", v.date || "", v.desc || "", categoryMeta(v.category).label, num(v.amount).toFixed(2), v.paid ? "Ja" : "Nee"]);
+      });
+      (data.subscriptions || []).forEach((s) => {
+        rows.push([id, "Abonnement", "", s.desc || "", "Abonnementen", num(s.amount).toFixed(2), s.paid ? "Ja" : "Nee"]);
+      });
+    });
+    downloadFile("gezinsbudget-posten-" + todayStamp() + ".csv", toCSV(headers, rows), "text/csv;charset=utf-8");
+    setExportStatus(rows.length + " posten gedownload.", false);
+  }
+
+  function serializeForBackup(value) {
+    if (value == null) return value;
+    if (typeof value.toDate === "function") return value.toDate().toISOString();
+    if (Array.isArray(value)) return value.map(serializeForBackup);
+    if (typeof value === "object") {
+      const out = {};
+      Object.keys(value).forEach((k) => {
+        out[k] = serializeForBackup(value[k]);
+      });
+      return out;
+    }
+    return value;
+  }
+
+  function exportFullBackup() {
+    setExportStatus("Back-up wordt voorbereid…", false);
+    Promise.all([db.collection("months").get(), db.collection("credits").get(), db.collection("bankTransactions").get()])
+      .then(([monthsSnap, creditsSnap, txSnap]) => {
+        const backup = { exportedAt: new Date().toISOString(), months: {}, credits: [], bankTransactions: [] };
+        monthsSnap.docs.forEach((d) => {
+          backup.months[d.id] = serializeForBackup(d.data());
+        });
+        creditsSnap.docs.forEach((d) => {
+          backup.credits.push(Object.assign({ id: d.id }, serializeForBackup(d.data())));
+        });
+        txSnap.docs.forEach((d) => {
+          backup.bankTransactions.push(Object.assign({ id: d.id }, serializeForBackup(d.data())));
+        });
+        downloadFile("gezinsbudget-backup-" + todayStamp() + ".json", JSON.stringify(backup, null, 2), "application/json");
+        setExportStatus("Back-up gedownload.", false);
+      })
+      .catch((err) => {
+        console.error("Back-up maken mislukt", err);
+        setExportStatus("Back-up maken mislukt: " + err.message, true);
+      });
+  }
+
+  function bindExportButtons() {
+    document.getElementById("export-monthly").addEventListener("click", exportMonthlySummary);
+    document.getElementById("export-lineitems").addEventListener("click", exportLineItems);
+    document.getElementById("export-backup").addEventListener("click", exportFullBackup);
+  }
+
+  // ==========================================================================
   // Boot
   // ==========================================================================
 
@@ -518,6 +667,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     bindTabs();
     bindCategoryTrendSelect();
+    bindExportButtons();
     if (initFirebase()) loadAndRender();
   });
 })();

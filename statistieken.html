@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%92%B6</text></svg>">
 <title>Gezinsbudget — Statistieken</title>
 <link rel="stylesheet" href="css/style.css?v=6">
-<link rel="stylesheet" href="css/stats.css?v=6">
+<link rel="stylesheet" href="css/stats.css?v=7">
 </head>
 <body>
 <div class="app">
@@ -114,6 +114,17 @@
 
     <p class="stats-empty hidden" id="stats-empty">Nog geen gegevens gevonden. Open eerst één of meerdere maanden in het budget-overzicht.</p>
 
+    <section class="card" id="export-card">
+      <div class="card-header"><h2>Exporteren</h2></div>
+      <p class="card-hint">Download je gegevens als bestand — bv. om te bewaren of zelf verder te bekijken in Excel.</p>
+      <div class="export-buttons">
+        <button type="button" class="btn-add" id="export-monthly">📄 Maandtotalen (CSV)</button>
+        <button type="button" class="btn-add" id="export-lineitems">📄 Losse posten (CSV)</button>
+        <button type="button" class="btn-add" id="export-backup">💾 Volledige back-up (JSON)</button>
+      </div>
+      <p class="export-status hidden" id="export-status"></p>
+    </section>
+
     <footer class="app-footer">
       <p>Gezinsbudget · statistieken over alle opgeslagen maanden</p>
     </footer>
@@ -134,6 +145,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 
 <script src="js/firebase-config.js?v=6"></script>
-<script src="js/stats.js?v=6"></script>
+<script src="js/stats.js?v=7"></script>
 </body>
 </html>

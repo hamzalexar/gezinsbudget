@@ -139,6 +139,21 @@
   font-family: inherit;
 }
 
+.export-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.export-buttons .btn-add { margin-top: 0; }
+
+.export-status {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.export-status.export-status-error { color: var(--negative); font-weight: 600; }
+
 @media (min-width: 640px) {
   .chart-wrap { height: 320px; }
+  .export-buttons { flex-direction: row; }
 }
