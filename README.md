@@ -84,6 +84,9 @@ service cloud.firestore {
     match /months/{monthId} {
       allow read, write: if true;
     }
+    match /credits/{creditId} {
+      allow read, write: if true;
+    }
   }
 }
 ```
