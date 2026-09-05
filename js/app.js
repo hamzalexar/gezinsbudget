@@ -477,7 +477,6 @@
     document.getElementById("kpi-total-costs").textContent = formatEUR(totalCosts);
     document.getElementById("kpi-free").textContent = formatEUR(vrijTeBesteden);
     document.getElementById("kpi-free-card").classList.toggle("negative", vrijTeBesteden < 0);
-    renderTeBetalenList();
 
     // Overzichtskaarten
     document.getElementById("total-inkomsten-card").textContent = formatEUR(totalIncome);
@@ -793,74 +792,6 @@
   }
 
   // ==========================================================================
-  // Overzicht: "Te betalen op rekening" — vaste facturen en kredieten van
-  // deze maand samen in één lijst, zodat afvinken op één plek volstaat.
-  // Afvinken hier werkt rechtstreeks door op dezelfde data als de Vaste
-  // facturen- en Kredieten-schermen (geen aparte "betaald"-status).
-  // ==========================================================================
-
-  function buildTeBetalenRow(item) {
-    const row = document.createElement("div");
-    row.className = "row is-credit";
-    row.innerHTML =
-      '<div class="credit-header-line">' +
-      '<span class="credit-badge" title="' + (item.source === "credit" ? "Krediet" : "Vaste factuur") + '">' +
-      (item.source === "credit" ? "🏦" : "🧾") + "</span>" +
-      '<span class="credit-readonly-desc"></span>' +
-      "</div>" +
-      '<div class="credit-footer-line">' +
-      '<span class="credit-readonly-amount"></span>' +
-      '<label class="row-paid"><input type="checkbox" class="tebetalen-paid">betaald</label>' +
-      "</div>";
-
-    row.querySelector(".tebetalen-paid").addEventListener("change", (e) => {
-      if (item.source === "credit") {
-        toggleCreditPaid(item.id, e.target.checked);
-        renderActiveCredits();
-      } else {
-        updateItemInList(state.data.fixedBills, item.id, { paid: e.target.checked });
-        renderFixedBills();
-        renderKPIs();
-        scheduleSave();
-      }
-    });
-    return row;
-  }
-
-  function renderTeBetalenList() {
-    const bills = (state.data.fixedBills || []).map((b) => ({
-      id: b.id,
-      desc: b.desc,
-      amount: b.amount,
-      paid: !!b.paid,
-      source: "fixed"
-    }));
-    const credits = activeCreditsForMonth(state.monthId).map((c) => ({
-      id: c.id,
-      desc: c.desc,
-      amount: c.amount,
-      paid: (state.data.paidCreditIds || []).includes(c.id),
-      source: "credit"
-    }));
-    const items = bills.concat(credits).sort((a, b) => Number(a.paid) - Number(b.paid));
-
-    syncList(document.getElementById("tebetalen-list"), items, buildTeBetalenRow, (row, item) => {
-      row.querySelector(".credit-readonly-desc").textContent = item.desc || "(naamloos)";
-      row.querySelector(".credit-readonly-amount").textContent = formatEUR(item.amount);
-      const paidBox = row.querySelector(".tebetalen-paid");
-      if (document.activeElement !== paidBox) paidBox.checked = item.paid;
-      row.classList.toggle("is-paid", item.paid);
-    });
-
-    const unpaid = items.filter((i) => !i.paid);
-    const unpaidTotal = sum(unpaid, "amount");
-    document.getElementById("meta-tebetalen").textContent =
-      items.length === 0 ? "Geen posten" : unpaid.length === 0 ? "Alles betaald" : unpaid.length + " van " + items.length + " nog te betalen";
-    document.getElementById("total-tebetalen-card").textContent = formatEUR(unpaidTotal);
-    document.getElementById("total-tebetalen").textContent = formatEUR(unpaidTotal);
-  }
-
-  // ==========================================================================
   // Rendering: Variabele uitgaven
   // ==========================================================================
 
@@ -1047,7 +978,6 @@
     "screen-inkomsten": "screen-overview",
     "screen-vast": "screen-overview",
     "screen-krediet": "screen-overview",
-    "screen-tebetalen": "screen-overview",
     "screen-variabel": "screen-overview",
     "screen-abonnement": "screen-overview",
     "screen-tank": "screen-overview",

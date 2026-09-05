@@ -109,14 +109,6 @@
           <span class="section-total" id="total-krediet-card">€ 0,00</span>
           <button type="button" class="section-add" data-add="krediet" aria-label="Krediet toevoegen">+</button>
         </div>
-        <div class="section-card" data-section="tebetalen" role="button" tabindex="0">
-          <span class="section-emoji">💳</span>
-          <span class="section-info">
-            <span class="section-title">Te betalen op rekening</span>
-            <span class="section-meta" id="meta-tebetalen">—</span>
-          </span>
-          <span class="section-total" id="total-tebetalen-card">€ 0,00</span>
-        </div>
         <div class="section-card" data-section="variabel" role="button" tabindex="0">
           <span class="section-emoji">🛒</span>
           <span class="section-info">
@@ -242,25 +234,6 @@
   </div>
 
   <!-- ============================================================= -->
-  <!-- SCHERM: TE BETALEN OP REKENING (overzicht, vast + kredieten)   -->
-  <!-- ============================================================= -->
-  <div class="screen" id="screen-tebetalen">
-    <header class="detail-topbar">
-      <button type="button" class="icon-btn" data-back>←</button>
-      <h2>Te betalen op rekening</h2>
-    </header>
-
-    <div class="detail-total-card">
-      <div class="label">Nog te betalen</div>
-      <div class="val" id="total-tebetalen">€ 0,00</div>
-    </div>
-
-    <p class="card-hint">Alle vaste facturen en kredieten van deze maand samen, zodat je in één overzicht ziet wat nog moet gebeuren. Vink hier af zodra iets betaald is — dat werkt door naar Vaste facturen/Kredieten en de KPI bovenaan.</p>
-
-    <div class="list" id="tebetalen-list"></div>
-  </div>
-
-  <!-- ============================================================= -->
   <!-- SCHERM: VARIABELE UITGAVEN (detail)                            -->
   <!-- ============================================================= -->
   <div class="screen" id="screen-variabel">
@@ -372,6 +345,6 @@
 
 <script src="js/firebase-config.js?v=5"></script>
 <script src="js/auth.js?v=1"></script>
-<script src="js/app.js?v=10"></script>
+<script src="js/app.js?v=11"></script>
 </body>
 </html>
