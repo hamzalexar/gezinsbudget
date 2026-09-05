@@ -110,10 +110,13 @@
   }
 
   let charts = {};
+  let selectedSplitMonthId = null;
 
-  function destroyCharts() {
-    Object.values(charts).forEach((c) => c && c.destroy());
-    charts = {};
+  function destroyChart(key) {
+    if (charts[key]) {
+      charts[key].destroy();
+      delete charts[key];
+    }
   }
 
   function baseOptions(colors, extra) {
@@ -142,9 +145,11 @@
     );
   }
 
-  function renderCharts(monthStats) {
+  function renderOverviewCharts(monthStats) {
     const colors = themeColors();
-    destroyCharts();
+    destroyChart("overview");
+    destroyChart("variable");
+    destroyChart("fuel");
     const labels = monthStats.map((m) => monthLabel(m.monthId));
 
     charts.overview = new Chart(document.getElementById("chart-overview"), {
@@ -183,31 +188,6 @@
       options: baseOptions(colors)
     });
 
-    const last = monthStats[monthStats.length - 1];
-    document.getElementById("split-month-label").textContent = monthLabelLong(last.monthId);
-    charts.split = new Chart(document.getElementById("chart-split"), {
-      type: "doughnut",
-      data: {
-        labels: ["Vaste facturen", "Abonnementen", "Variabele uitgaven"],
-        datasets: [
-          {
-            data: [last.totalFixed, last.totalSubs, last.totalVariable],
-            backgroundColor: [colors.accent, colors.accent2, colors.warning],
-            borderColor: getComputedStyle(document.documentElement).getPropertyValue("--surface").trim(),
-            borderWidth: 2
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: "bottom", labels: { color: colors.text, usePointStyle: true, boxWidth: 8 } },
-          tooltip: { callbacks: { label: (ctx) => ctx.label + ": " + formatEUR(ctx.parsed) } }
-        }
-      }
-    });
-
     charts.fuel = new Chart(document.getElementById("chart-fuel"), {
       type: "bar",
       data: {
@@ -218,6 +198,74 @@
         ]
       },
       options: baseOptions(colors)
+    });
+  }
+
+  function renderMonthPills(monthStats) {
+    const container = document.getElementById("month-pills");
+    container.innerHTML = "";
+    monthStats.forEach((m) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "month-pill" + (m.monthId === selectedSplitMonthId ? " active" : "");
+      btn.textContent = monthLabel(m.monthId);
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", m.monthId === selectedSplitMonthId ? "true" : "false");
+      btn.addEventListener("click", () => {
+        selectedSplitMonthId = m.monthId;
+        renderMonthPills(monthStats);
+        renderSplit(m);
+      });
+      container.appendChild(btn);
+    });
+    container.scrollLeft = container.scrollWidth;
+  }
+
+  function renderSplit(monthStat) {
+    const colors = themeColors();
+    destroyChart("split");
+    document.getElementById("split-month-label").textContent = monthLabelLong(monthStat.monthId);
+
+    const categories = [
+      { label: "Vaste facturen", amount: monthStat.totalFixed, color: colors.accent },
+      { label: "Abonnementen", amount: monthStat.totalSubs, color: colors.accent2 },
+      { label: "Variabele uitgaven", amount: monthStat.totalVariable, color: colors.warning }
+    ];
+    const total = categories.reduce((a, c) => a + c.amount, 0);
+
+    charts.split = new Chart(document.getElementById("chart-split"), {
+      type: "doughnut",
+      data: {
+        labels: categories.map((c) => c.label),
+        datasets: [
+          {
+            data: categories.map((c) => c.amount),
+            backgroundColor: categories.map((c) => c.color),
+            borderColor: getComputedStyle(document.documentElement).getPropertyValue("--surface").trim(),
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => ctx.label + ": " + formatEUR(ctx.parsed) } }
+        }
+      }
+    });
+
+    const tbody = document.getElementById("split-table-body");
+    tbody.innerHTML = "";
+    categories.forEach((c) => {
+      const pct = total > 0 ? (c.amount / total) * 100 : 0;
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td><span class="split-dot" style="background:' + c.color + '"></span>' + c.label + "</td>" +
+        "<td>" + formatEUR(c.amount) + "</td>" +
+        "<td>" + pct.toFixed(0) + "%</td>";
+      tbody.appendChild(tr);
     });
   }
 
@@ -241,8 +289,40 @@
   }
 
   // ==========================================================================
+  // Tabs
+  // ==========================================================================
+
+  function bindTabs() {
+    const tabs = [
+      { btn: "tab-btn-overview", panel: "tab-overview" },
+      { btn: "tab-btn-split", panel: "tab-split" }
+    ];
+    tabs.forEach(({ btn, panel }) => {
+      document.getElementById(btn).addEventListener("click", () => {
+        tabs.forEach(({ btn: b, panel: p }) => {
+          const isActive = b === btn;
+          document.getElementById(b).classList.toggle("active", isActive);
+          document.getElementById(b).setAttribute("aria-selected", isActive ? "true" : "false");
+          document.getElementById(p).classList.toggle("hidden", !isActive);
+        });
+      });
+    });
+  }
+
+  // ==========================================================================
   // Boot
   // ==========================================================================
+
+  function renderAll(monthStats) {
+    window.__lastMonthStats = monthStats;
+    if (!selectedSplitMonthId || !monthStats.some((m) => m.monthId === selectedSplitMonthId)) {
+      selectedSplitMonthId = monthStats[monthStats.length - 1].monthId;
+    }
+    renderSummary(monthStats);
+    renderOverviewCharts(monthStats);
+    renderMonthPills(monthStats);
+    renderSplit(monthStats.find((m) => m.monthId === selectedSplitMonthId));
+  }
 
   function loadAndRender() {
     setSyncStatus("loading");
@@ -260,9 +340,7 @@
 
         document.getElementById("stats-empty").classList.add("hidden");
         document.getElementById("main-content").classList.remove("hidden");
-        window.__lastMonthStats = monthStats;
-        renderSummary(monthStats);
-        renderCharts(monthStats);
+        renderAll(monthStats);
         setSyncStatus(snap.metadata.hasPendingWrites ? "saving" : "synced");
       },
       (err) => {
@@ -274,7 +352,7 @@
 
   if (window.matchMedia) {
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-      if (window.__lastMonthStats) renderCharts(window.__lastMonthStats);
+      if (window.__lastMonthStats) renderAll(window.__lastMonthStats);
     });
   }
 
@@ -283,6 +361,7 @@
   });
 
   document.addEventListener("DOMContentLoaded", () => {
+    bindTabs();
     if (initFirebase()) loadAndRender();
   });
 })();

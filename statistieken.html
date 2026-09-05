@@ -31,55 +31,78 @@
 
     <p class="stats-intro" id="stats-range">Gegevens over alle maanden in Firestore.</p>
 
-    <section class="kpis stats-summary" aria-label="Gemiddelden">
-      <div class="kpi-card kpi-budget">
-        <div class="kpi-label">Gem. variabele uitgaven / maand</div>
-        <div class="kpi-value" id="avg-variable">€ 0,00</div>
-      </div>
-      <div class="kpi-card kpi-budget">
-        <div class="kpi-label">Gem. abonnementen / maand</div>
-        <div class="kpi-value" id="avg-subs">€ 0,00</div>
-      </div>
-      <div class="kpi-card kpi-after" id="avg-after-card">
-        <div class="kpi-label">Gem. over na betalen / maand</div>
-        <div class="kpi-value" id="avg-after">€ 0,00</div>
-      </div>
-      <div class="kpi-card kpi-remaining">
-        <div class="kpi-label">Totaal getankt (Dacia + Seat)</div>
-        <div class="kpi-value" id="total-fuel-all">€ 0,00</div>
-      </div>
-    </section>
+    <div class="tabs" role="tablist" aria-label="Statistiekweergave">
+      <button type="button" class="tab-btn active" id="tab-btn-overview" role="tab" aria-selected="true" aria-controls="tab-overview">Overzicht</button>
+      <button type="button" class="tab-btn" id="tab-btn-split" role="tab" aria-selected="false" aria-controls="tab-split">Verdeling</button>
+    </div>
 
-    <section class="card chart-card" aria-labelledby="h-chart-overview">
-      <div class="card-header">
-        <h2 id="h-chart-overview">Inkomsten vs. uitgaven per maand</h2>
-      </div>
-      <div class="chart-wrap"><canvas id="chart-overview" role="img" aria-label="Lijngrafiek van inkomsten en totale uitgaven per maand"></canvas></div>
-    </section>
+    <div class="tab-panel" id="tab-overview" role="tabpanel" aria-labelledby="tab-btn-overview">
 
-    <section class="card chart-card" aria-labelledby="h-chart-variable">
-      <div class="card-header">
-        <h2 id="h-chart-variable">Variabele uitgaven &amp; abonnementen per maand</h2>
-        <div class="card-total card-total-muted">Dit toont waar je "verspilling" zit</div>
-      </div>
-      <div class="chart-wrap"><canvas id="chart-variable" role="img" aria-label="Staafdiagram van variabele uitgaven en abonnementen per maand"></canvas></div>
-    </section>
+      <section class="kpis stats-summary" aria-label="Gemiddelden">
+        <div class="kpi-card kpi-budget">
+          <div class="kpi-label">Gem. variabele uitgaven / maand</div>
+          <div class="kpi-value" id="avg-variable">€ 0,00</div>
+        </div>
+        <div class="kpi-card kpi-budget">
+          <div class="kpi-label">Gem. abonnementen / maand</div>
+          <div class="kpi-value" id="avg-subs">€ 0,00</div>
+        </div>
+        <div class="kpi-card kpi-after" id="avg-after-card">
+          <div class="kpi-label">Gem. over na betalen / maand</div>
+          <div class="kpi-value" id="avg-after">€ 0,00</div>
+        </div>
+        <div class="kpi-card kpi-remaining">
+          <div class="kpi-label">Totaal getankt (Dacia + Seat)</div>
+          <div class="kpi-value" id="total-fuel-all">€ 0,00</div>
+        </div>
+      </section>
 
-    <section class="card chart-card" aria-labelledby="h-chart-split">
-      <div class="card-header">
-        <h2 id="h-chart-split">Verdeling van je budget (laatste maand)</h2>
-        <div class="card-total card-total-muted" id="split-month-label"></div>
-      </div>
-      <div class="chart-wrap chart-wrap-donut"><canvas id="chart-split" role="img" aria-label="Cirkeldiagram met de verdeling tussen vaste facturen, abonnementen en variabele uitgaven"></canvas></div>
-    </section>
+      <section class="card chart-card" aria-labelledby="h-chart-overview">
+        <div class="card-header">
+          <h2 id="h-chart-overview">Inkomsten vs. uitgaven per maand</h2>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-overview" role="img" aria-label="Lijngrafiek van inkomsten en totale uitgaven per maand"></canvas></div>
+      </section>
 
-    <section class="card chart-card" aria-labelledby="h-chart-fuel">
-      <div class="card-header">
-        <h2 id="h-chart-fuel">🚗 Tankkosten per maand</h2>
-        <div class="card-total card-total-muted">Enkel informatief, telt niet mee in het budget</div>
-      </div>
-      <div class="chart-wrap"><canvas id="chart-fuel" role="img" aria-label="Staafdiagram van tankkosten per maand voor Dacia en Seat"></canvas></div>
-    </section>
+      <section class="card chart-card" aria-labelledby="h-chart-variable">
+        <div class="card-header">
+          <h2 id="h-chart-variable">Variabele uitgaven &amp; abonnementen per maand</h2>
+          <div class="card-total card-total-muted">Dit toont waar je "verspilling" zit</div>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-variable" role="img" aria-label="Staafdiagram van variabele uitgaven en abonnementen per maand"></canvas></div>
+      </section>
+
+      <section class="card chart-card" aria-labelledby="h-chart-fuel">
+        <div class="card-header">
+          <h2 id="h-chart-fuel">🚗 Tankkosten per maand</h2>
+          <div class="card-total card-total-muted">Enkel informatief, telt niet mee in het budget</div>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-fuel" role="img" aria-label="Staafdiagram van tankkosten per maand voor Dacia en Seat"></canvas></div>
+      </section>
+
+    </div>
+
+    <div class="tab-panel hidden" id="tab-split" role="tabpanel" aria-labelledby="tab-btn-split">
+
+      <div class="month-pills" id="month-pills" role="tablist" aria-label="Kies een maand"></div>
+
+      <section class="card chart-card" aria-labelledby="h-chart-split">
+        <div class="card-header">
+          <h2 id="h-chart-split">Verdeling van je budget</h2>
+          <div class="card-total card-total-muted" id="split-month-label"></div>
+        </div>
+        <div class="split-layout">
+          <div class="chart-wrap chart-wrap-donut"><canvas id="chart-split" role="img" aria-label="Cirkeldiagram met de verdeling tussen vaste facturen, abonnementen en variabele uitgaven"></canvas></div>
+          <table class="split-table" id="split-table">
+            <thead>
+              <tr><th>Categorie</th><th>Bedrag</th><th>%</th></tr>
+            </thead>
+            <tbody id="split-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
 
     <p class="stats-empty hidden" id="stats-empty">Nog geen gegevens gevonden. Open eerst één of meerdere maanden in het budget-overzicht.</p>
 
