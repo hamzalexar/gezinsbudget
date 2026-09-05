@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="Statistieken en grafieken van je gezinsbudget: inkomsten vs. uitgaven, variabele uitgaven, verdeling van je budget en tankkosten per maand.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%92%B6</text></svg>">
+<title>Gezinsbudget — Statistieken</title>
+<link rel="stylesheet" href="css/style.css?v=1">
+<link rel="stylesheet" href="css/stats.css?v=1">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true">📊</span>
+      <h1>Statistieken</h1>
+    </div>
+    <div class="topbar-actions">
+      <a href="index.html" class="back-link">← <span>Budget</span></a>
+      <div class="sync-status" id="sync-status" data-state="loading">
+        <span class="sync-dot" aria-hidden="true"></span>
+        <span class="sync-label" id="sync-label">Verbinden…</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content" class="hidden">
+
+    <p class="stats-intro" id="stats-range">Gegevens over alle maanden in Firestore.</p>
+
+    <section class="kpis stats-summary" aria-label="Gemiddelden">
+      <div class="kpi-card kpi-budget">
+        <div class="kpi-label">Gem. variabele uitgaven / maand</div>
+        <div class="kpi-value" id="avg-variable">€ 0,00</div>
+      </div>
+      <div class="kpi-card kpi-budget">
+        <div class="kpi-label">Gem. abonnementen / maand</div>
+        <div class="kpi-value" id="avg-subs">€ 0,00</div>
+      </div>
+      <div class="kpi-card kpi-after" id="avg-after-card">
+        <div class="kpi-label">Gem. over na betalen / maand</div>
+        <div class="kpi-value" id="avg-after">€ 0,00</div>
+      </div>
+      <div class="kpi-card kpi-remaining">
+        <div class="kpi-label">Totaal getankt (Dacia + Seat)</div>
+        <div class="kpi-value" id="total-fuel-all">€ 0,00</div>
+      </div>
+    </section>
+
+    <section class="card chart-card" aria-labelledby="h-chart-overview">
+      <div class="card-header">
+        <h2 id="h-chart-overview">Inkomsten vs. uitgaven per maand</h2>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-overview" role="img" aria-label="Lijngrafiek van inkomsten en totale uitgaven per maand"></canvas></div>
+    </section>
+
+    <section class="card chart-card" aria-labelledby="h-chart-variable">
+      <div class="card-header">
+        <h2 id="h-chart-variable">Variabele uitgaven &amp; abonnementen per maand</h2>
+        <div class="card-total card-total-muted">Dit toont waar je "verspilling" zit</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-variable" role="img" aria-label="Staafdiagram van variabele uitgaven en abonnementen per maand"></canvas></div>
+    </section>
+
+    <section class="card chart-card" aria-labelledby="h-chart-split">
+      <div class="card-header">
+        <h2 id="h-chart-split">Verdeling van je budget (laatste maand)</h2>
+        <div class="card-total card-total-muted" id="split-month-label"></div>
+      </div>
+      <div class="chart-wrap chart-wrap-donut"><canvas id="chart-split" role="img" aria-label="Cirkeldiagram met de verdeling tussen vaste facturen, abonnementen en variabele uitgaven"></canvas></div>
+    </section>
+
+    <section class="card chart-card" aria-labelledby="h-chart-fuel">
+      <div class="card-header">
+        <h2 id="h-chart-fuel">🚗 Tankkosten per maand</h2>
+        <div class="card-total card-total-muted">Enkel informatief, telt niet mee in het budget</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-fuel" role="img" aria-label="Staafdiagram van tankkosten per maand voor Dacia en Seat"></canvas></div>
+    </section>
+
+    <p class="stats-empty hidden" id="stats-empty">Nog geen gegevens gevonden. Open eerst één of meerdere maanden in het budget-overzicht.</p>
+
+    <footer class="app-footer">
+      <p>Gezinsbudget · statistieken over alle opgeslagen maanden</p>
+    </footer>
+
+  </main>
+
+  <div id="config-warning" class="config-warning hidden">
+    <div class="config-warning-box">
+      <h2>Firebase-configuratie ontbreekt</h2>
+      <p>Vul je eigen Firebase-projectgegevens in <code>js/firebase-config.js</code> in voordat je de app gebruikt. Zie <code>README.md</code> voor de volledige uitleg.</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+
+<script src="js/firebase-config.js?v=1"></script>
+<script src="js/stats.js?v=1"></script>
+</body>
+</html>

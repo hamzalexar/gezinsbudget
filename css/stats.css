@@ -1,0 +1,32 @@
+.stats-intro {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0 0 14px;
+}
+
+.stats-summary { margin-bottom: 18px; }
+
+.chart-card { padding-bottom: 10px; }
+
+.chart-wrap {
+  position: relative;
+  height: 260px;
+  width: 100%;
+}
+
+.chart-wrap-donut {
+  height: 280px;
+  max-width: 340px;
+  margin: 0 auto;
+}
+
+.stats-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 30px 16px;
+  font-size: 0.95rem;
+}
+
+@media (min-width: 640px) {
+  .chart-wrap { height: 320px; }
+}
