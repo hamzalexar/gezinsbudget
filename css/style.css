@@ -269,6 +269,13 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 .card-total span { color: var(--text); font-weight: 800; }
 .card-total-muted { font-style: italic; }
 
+.card-hint {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: -4px 0 12px;
+  line-height: 1.4;
+}
+
 .subheading {
   font-size: 0.85rem;
   font-weight: 700;
@@ -410,6 +417,58 @@ input[type="checkbox"] {
   flex: 0 0 auto;
   max-width: 130px;
 }
+
+/* ===== Kredieten ===== */
+.row-credit { flex-wrap: wrap; }
+.row-credit > input[type="text"] { flex: 1 1 100%; margin-bottom: 8px; }
+
+.credit-fields {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.micro-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.micro-field input[type="month"] {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  min-height: var(--tap);
+  padding: 0 8px;
+  font-size: 0.9rem;
+  color: var(--text);
+  text-transform: none;
+}
+
+.credit-fields .row-remove { margin-left: auto; }
+
+.row.is-credit {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.credit-header-line,
+.credit-footer-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.credit-footer-line { justify-content: space-between; }
+.credit-badge { flex-shrink: 0; font-size: 1rem; }
+.credit-readonly-desc { font-weight: 600; }
+.credit-readonly-range { font-size: 0.78rem; color: var(--text-muted); }
+.credit-readonly-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
+.row.is-credit .row-paid { flex-direction: row; gap: 6px; }
 
 .row-paid {
   display: flex;

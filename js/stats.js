@@ -62,14 +62,32 @@
   }
 
   // ==========================================================================
+  // Kredieten (recurring costs with a fixed start/end date)
+  //
+  // These live in their own Firestore collection rather than being copied
+  // into each month's document, so a month's contribution is recomputed
+  // from the credit's stored start/end dates every time — using THAT
+  // month's own id, never "today" — so history stays stable even after a
+  // credit's term ends, and only changes if the credit record itself is
+  // later edited or deleted.
+  // ==========================================================================
+
+  function isCreditActiveInMonth(credit, monthId) {
+    if (!credit.startMonth || credit.startMonth > monthId) return false;
+    if (credit.endMonth && monthId > credit.endMonth) return false;
+    return true;
+  }
+
+  // ==========================================================================
   // Data aggregation
   // ==========================================================================
 
-  function computeMonthStats(monthId, data) {
+  function computeMonthStats(monthId, data, credits) {
     data = data || {};
     const income = data.income || {};
     const totalIncome = num(income.salary) + sum(income.children, "amount") + sum(income.extra, "amount");
-    const totalFixed = sum(data.fixedBills, "amount");
+    const activeCredits = (credits || []).filter((c) => isCreditActiveInMonth(c, monthId));
+    const totalFixed = sum(data.fixedBills, "amount") + sum(activeCredits, "amount");
     const toTransfer = Math.max(0, totalFixed + num(data.buffer) - num(data.partnerContribution));
     const variableBudget = totalIncome - toTransfer;
     const totalVariable = sum(data.variableExpenses, "amount");
@@ -328,24 +346,40 @@
     renderSplit(monthStats.find((m) => m.monthId === selectedSplitMonthId));
   }
 
+  let latestMonthDocs = null;
+  let latestCredits = [];
+
+  function recomputeAndRender() {
+    if (!latestMonthDocs) return;
+    if (latestMonthDocs.length === 0) {
+      document.getElementById("main-content").classList.remove("hidden");
+      document.getElementById("stats-empty").classList.remove("hidden");
+      setSyncStatus("synced");
+      return;
+    }
+    const monthStats = latestMonthDocs
+      .map((d) => computeMonthStats(d.id, d.data(), latestCredits))
+      .sort((a, b) => (a.monthId < b.monthId ? -1 : a.monthId > b.monthId ? 1 : 0));
+
+    document.getElementById("stats-empty").classList.add("hidden");
+    document.getElementById("main-content").classList.remove("hidden");
+    renderAll(monthStats);
+    setSyncStatus("synced");
+  }
+
   function loadAndRender() {
     setSyncStatus("loading");
+    db.collection("credits").onSnapshot(
+      (snap) => {
+        latestCredits = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+        recomputeAndRender();
+      },
+      (err) => console.error("Kredieten laden mislukt", err)
+    );
     db.collection("months").onSnapshot(
       (snap) => {
-        if (snap.empty) {
-          document.getElementById("main-content").classList.remove("hidden");
-          document.getElementById("stats-empty").classList.remove("hidden");
-          setSyncStatus("synced");
-          return;
-        }
-        const monthStats = snap.docs
-          .map((d) => computeMonthStats(d.id, d.data()))
-          .sort((a, b) => (a.monthId < b.monthId ? -1 : a.monthId > b.monthId ? 1 : 0));
-
-        document.getElementById("stats-empty").classList.add("hidden");
-        document.getElementById("main-content").classList.remove("hidden");
-        renderAll(monthStats);
-        setSyncStatus(snap.metadata.hasPendingWrites ? "saving" : "synced");
+        latestMonthDocs = snap.docs;
+        recomputeAndRender();
       },
       (err) => {
         console.error("Firestore-fout", err);

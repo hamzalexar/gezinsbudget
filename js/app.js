@@ -130,7 +130,25 @@
     data.fuel = data.fuel || {};
     data.fuel.dacia = (data.fuel.dacia || []).map((f) => ({ id: f.id || genId(), date: f.date || "", amount: num(f.amount) }));
     data.fuel.seat = (data.fuel.seat || []).map((f) => ({ id: f.id || genId(), date: f.date || "", amount: num(f.amount) }));
+    data.paidCreditIds = Array.isArray(data.paidCreditIds) ? data.paidCreditIds : [];
     return data;
+  }
+
+  function normalizeCredit(id, data) {
+    data = data || {};
+    return {
+      id,
+      desc: data.desc || "",
+      amount: num(data.amount),
+      startMonth: data.startMonth || "",
+      endMonth: data.endMonth || ""
+    };
+  }
+
+  function isCreditActiveInMonth(credit, monthId) {
+    if (!credit.startMonth || credit.startMonth > monthId) return false;
+    if (credit.endMonth && monthId > credit.endMonth) return false;
+    return true;
   }
 
   // ==========================================================================
@@ -174,7 +192,8 @@
     currentDate: todayFirstOfMonth(),
     monthId: null,
     data: null,
-    unsubscribe: null
+    unsubscribe: null,
+    credits: []
   };
 
   // ==========================================================================
@@ -202,6 +221,10 @@
 
   function monthDocRef(monthId) {
     return db.collection("months").doc(monthId);
+  }
+
+  function creditsCollectionRef() {
+    return db.collection("credits");
   }
 
   function findPreviousMonth(monthId) {
@@ -382,10 +405,15 @@
 
   function renderKPIs() {
     const d = state.data;
+    const activeCredits = activeCreditsForMonth(state.monthId);
     const totalIncome = num(d.income.salary) + sum(d.income.children, "amount") + sum(d.income.extra, "amount");
-    const totalFixed = sum(d.fixedBills, "amount");
+    const totalFixed = sum(d.fixedBills, "amount") + sum(activeCredits, "amount");
     const toTransfer = Math.max(0, totalFixed + num(d.buffer) - num(d.partnerContribution));
-    const paidFixed = sum(d.fixedBills.filter((b) => b.paid), "amount");
+    const paidCreditsAmount = sum(
+      activeCredits.filter((c) => (d.paidCreditIds || []).includes(c.id)),
+      "amount"
+    );
+    const paidFixed = sum(d.fixedBills.filter((b) => b.paid), "amount") + paidCreditsAmount;
     const remainingOnAccount = Math.max(0, toTransfer - paidFixed);
     const variableBudget = totalIncome - toTransfer;
     const totalVariable = sum(d.variableExpenses, "amount");
@@ -541,6 +569,153 @@
   function renderBufferAndPartner() {
     setValueIfNotFocused(document.getElementById("buffer-input"), state.data.buffer);
     setValueIfNotFocused(document.getElementById("partner-input"), state.data.partnerContribution);
+  }
+
+  // ==========================================================================
+  // Kredieten (recurring costs with a fixed start/end date, e.g. a car loan)
+  //
+  // Unlike vaste facturen, these are NOT copied into each month's document.
+  // Instead every month computes on the fly whether a credit is active for
+  // ITS OWN monthId. That means: (1) adding/editing a credit immediately
+  // applies to every month in range, including months that were already
+  // opened before — fixing the vaste-facturen copy-on-open limitation where
+  // an edit only reaches months not yet created; and (2) history stays
+  // stable for analysis — a past month keeps counting a credit for exactly
+  // the months it was really active in, even after the credit's term ends,
+  // unless you deliberately edit or delete the credit record itself.
+  // ==========================================================================
+
+  const creditSaveTimers = {};
+
+  function activeCreditsForMonth(monthId) {
+    return state.credits.filter((c) => isCreditActiveInMonth(c, monthId));
+  }
+
+  function loadCredits() {
+    creditsCollectionRef().onSnapshot(
+      (snap) => {
+        state.credits = snap.docs.map((d) => normalizeCredit(d.id, d.data()));
+        renderCredits();
+        // The month's own data may not have loaded yet (this listener and
+        // loadMonth's are independent and race on boot) — the pending
+        // month-load's own render() call will pick up state.credits once it
+        // lands, so there's nothing to refresh here yet.
+        if (state.data) {
+          renderActiveCredits();
+          renderKPIs();
+        }
+      },
+      (err) => console.error("Kredieten laden mislukt", err)
+    );
+  }
+
+  function scheduleCreditSave(id) {
+    clearTimeout(creditSaveTimers[id]);
+    creditSaveTimers[id] = setTimeout(() => {
+      const c = state.credits.find((x) => x.id === id);
+      if (!c) return;
+      creditsCollectionRef()
+        .doc(id)
+        .set({ desc: c.desc, amount: c.amount, startMonth: c.startMonth, endMonth: c.endMonth || null }, { merge: true })
+        .catch((err) => console.error("Krediet opslaan mislukt", err));
+    }, 450);
+  }
+
+  function buildCreditRow(item) {
+    const row = document.createElement("div");
+    row.className = "row row-credit";
+    row.innerHTML =
+      '<input type="text" class="credit-desc" placeholder="Omschrijving (bv. Lening auto)" maxlength="80">' +
+      '<div class="credit-fields">' +
+      '<div class="amount-input"><span class="amount-prefix">€</span>' +
+      '<input type="number" class="credit-amount" step="0.01" min="0" inputmode="decimal"></div>' +
+      '<label class="micro-field">Van<input type="month" class="credit-start"></label>' +
+      '<label class="micro-field">Tot (leeg = doorlopend)<input type="month" class="credit-end"></label>' +
+      '<button type="button" class="row-remove" aria-label="Verwijder krediet">×</button>' +
+      "</div>";
+
+    row.querySelector(".credit-desc").addEventListener("input", (e) => {
+      updateItemInList(state.credits, item.id, { desc: e.target.value });
+      scheduleCreditSave(item.id);
+    });
+    row.querySelector(".credit-amount").addEventListener("input", (e) => {
+      updateItemInList(state.credits, item.id, { amount: num(e.target.value) });
+      renderKPIs();
+      scheduleCreditSave(item.id);
+    });
+    row.querySelector(".credit-start").addEventListener("input", (e) => {
+      updateItemInList(state.credits, item.id, { startMonth: e.target.value });
+      renderActiveCredits();
+      renderKPIs();
+      scheduleCreditSave(item.id);
+    });
+    row.querySelector(".credit-end").addEventListener("input", (e) => {
+      updateItemInList(state.credits, item.id, { endMonth: e.target.value });
+      renderActiveCredits();
+      renderKPIs();
+      scheduleCreditSave(item.id);
+    });
+    row.querySelector(".row-remove").addEventListener("click", () => {
+      clearTimeout(creditSaveTimers[item.id]);
+      creditsCollectionRef()
+        .doc(item.id)
+        .delete()
+        .catch((err) => console.error("Krediet verwijderen mislukt", err));
+    });
+    return row;
+  }
+
+  function renderCredits() {
+    syncList(document.getElementById("credits-list"), state.credits, buildCreditRow, (row, item) => {
+      setValueIfNotFocused(row.querySelector(".credit-desc"), item.desc);
+      setValueIfNotFocused(row.querySelector(".credit-amount"), item.amount);
+      setValueIfNotFocused(row.querySelector(".credit-start"), item.startMonth);
+      setValueIfNotFocused(row.querySelector(".credit-end"), item.endMonth);
+    });
+  }
+
+  function toggleCreditPaid(creditId, checked) {
+    const ids = new Set(state.data.paidCreditIds || []);
+    if (checked) ids.add(creditId);
+    else ids.delete(creditId);
+    state.data.paidCreditIds = Array.from(ids);
+    renderKPIs();
+    scheduleSave();
+  }
+
+  function buildActiveCreditRow(item) {
+    const row = document.createElement("div");
+    row.className = "row is-credit";
+    row.innerHTML =
+      '<div class="credit-header-line">' +
+      '<span class="credit-badge" title="Beheer dit krediet bij Kredieten">🏦</span>' +
+      '<span class="credit-readonly-desc"></span>' +
+      "</div>" +
+      '<div class="credit-readonly-range"></div>' +
+      '<div class="credit-footer-line">' +
+      '<span class="credit-readonly-amount"></span>' +
+      '<label class="row-paid"><input type="checkbox" class="credit-paid">betaald</label>' +
+      "</div>";
+
+    row.querySelector(".credit-paid").addEventListener("change", (e) => {
+      toggleCreditPaid(item.id, e.target.checked);
+    });
+    return row;
+  }
+
+  function renderActiveCredits() {
+    const active = activeCreditsForMonth(state.monthId);
+    document.getElementById("active-credits-wrap").classList.toggle("hidden", active.length === 0);
+    syncList(document.getElementById("active-credits-list"), active, buildActiveCreditRow, (row, item) => {
+      row.querySelector(".credit-readonly-desc").textContent = item.desc || "(naamloos krediet)";
+      row.querySelector(".credit-readonly-amount").textContent = formatEUR(item.amount);
+      row.querySelector(".credit-readonly-range").textContent =
+        "van " + item.startMonth + (item.endMonth ? " tot " + item.endMonth : " · doorlopend");
+      const paidBox = row.querySelector(".credit-paid");
+      const isPaid = (state.data.paidCreditIds || []).includes(item.id);
+      if (document.activeElement !== paidBox) paidBox.checked = isPaid;
+      row.classList.toggle("is-paid", isPaid);
+    });
   }
 
   // ==========================================================================
@@ -702,6 +877,7 @@
     renderExtraIncome();
     renderFixedBills();
     renderBufferAndPartner();
+    renderActiveCredits();
     renderVariableExpenses();
     renderSubscriptions();
     renderFuel();
@@ -758,6 +934,11 @@
       renderFixedBills();
       scheduleSave();
     });
+    document.getElementById("add-credit").addEventListener("click", () => {
+      creditsCollectionRef()
+        .add({ desc: "", amount: 0, startMonth: state.monthId, endMonth: null })
+        .catch((err) => console.error("Krediet toevoegen mislukt", err));
+    });
     document.getElementById("add-variable").addEventListener("click", () => {
       const today = new Date();
       state.data.variableExpenses.push({
@@ -812,6 +993,7 @@
     bindStaticEvents();
     document.getElementById("month-label").textContent = monthLabelOf(state.currentDate);
     if (initFirebase()) {
+      loadCredits();
       loadMonth(state.currentDate);
     }
   });
