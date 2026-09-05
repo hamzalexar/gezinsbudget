@@ -6,11 +6,13 @@ Een responsive, mobile-first webapp voor maandelijks huishoudbudgetbeheer, met *
 
 - **Inkomsten**: loon, kinderbijslag per kind (vrij toe te voegen/verwijderen), extra inkomsten (bonus, RVA, teruggave, …).
 - **Vaste facturen**: huur, elektriciteit, verzekeringen, afbetalingen, … + veiligheidsbuffer en bijdrage partner.
-- **Automatisch meenemen**: bij het voor het eerst openen van een nieuwe maand worden de vaste facturen, abonnementen, veiligheidsbuffer en bijdrage partner automatisch gekopieerd uit de meest recente bestaande vorige maand (zo blijft bv. een autolening automatisch elke maand meelopen). Verwijder je een post in maand X, dan verdwijnt die vanaf maand X en alle daaropvolgende (nog niet eerder geopende) maanden; eerder al geopende maanden blijven ongewijzigd.
+- **Automatisch meenemen**: bij het voor het eerst openen van een nieuwe maand worden de vaste facturen, abonnementen, veiligheidsbuffer en bijdrage partner automatisch gekopieerd uit de meest recente bestaande vorige maand. Verwijder je een post in maand X, dan verdwijnt die vanaf maand X en alle daaropvolgende (nog niet eerder geopende) maanden; eerder al geopende maanden blijven ongewijzigd. **Let op**: een post die je pas ná het aanmaken van latere maanden toevoegt, bereikt die al bestaande latere maanden niet automatisch — gebruik daarvoor een **krediet** (zie hieronder).
+- **Kredieten**: voor kosten met een vaste looptijd (bv. een autolening). Een krediet heeft een "van"- en optionele "tot"-maand en wordt, in tegenstelling tot vaste facturen, niet gekopieerd maar **elke keer opnieuw berekend** op basis van die datums — het verschijnt en verdwijnt dus automatisch in élke maand binnen die periode, ook in maanden die al eerder geopend waren. Voor statistieken/analyse blijft een maand altijd tellen wat er in díe maand echt actief was, ook nadat de looptijd van het krediet is afgelopen — dat verandert enkel als je de datums of het bedrag zelf achteraf aanpast.
 - **Variabele uitgaven**: vrije lijst per maand (start elke maand leeg), met datum, omschrijving, bedrag en betaald-vinkje.
 - **Abonnementen**: terugkerende kosten (Apple Music, YouTube Premium, Disney+, …), blijven maand na maand meelopen, maar het betaald-vinkje wordt elke maand automatisch terug uitgevinkt.
 - **Tankbeurten**: puur informatieve lijstjes per auto (Dacia/Seat), tellen niet mee in de budgetberekening.
-- **KPI's bovenaan**: over te schrijven naar de gezamenlijke rekening, budget voor variabele uitgaven, en wat er na alle uitgaven deze maand nog rest.
+- **KPI's bovenaan**: over te schrijven naar de gezamenlijke rekening, wat daarvan nog op de rekening moet staan (rekening houdend met reeds betaalde facturen/kredieten), budget voor variabele uitgaven, en wat er na alle uitgaven deze maand nog rest.
+- **Statistieken**: aparte pagina met grafieken over alle opgeslagen maanden (inkomsten vs. uitgaven, variabele uitgaven/abonnementen per maand, budgetverdeling per maand, tankkosten per auto).
 - **Licht/donker thema**: volgt automatisch de systeeminstelling van je toestel.
 
 ## Bestandsstructuur
@@ -18,11 +20,14 @@ Een responsive, mobile-first webapp voor maandelijks huishoudbudgetbeheer, met *
 ```
 gezinsbudget/
 ├── index.html
+├── statistieken.html
 ├── css/
-│   └── style.css
+│   ├── style.css
+│   └── stats.css
 ├── js/
 │   ├── firebase-config.js   <- hier vul je je eigen Firebase-gegevens in
-│   └── app.js
+│   ├── app.js
+│   └── stats.js
 └── README.md
 ```
 
@@ -109,6 +114,8 @@ Klik op **"Publiceren"** (Publish).
 ## Hoe de gegevens opgeslagen worden
 
 Elke maand wordt opgeslagen als één document in de Firestore-collectie `months`, met als document-ID het formaat `YYYY-MM` (bv. `2026-09`). Bij het voor het eerst openen van een maand die nog niet bestaat, wordt automatisch gekeken naar het meest recente bestaande vorige maand-document, en worden vaste facturen, abonnementen (betaald-vinkje gereset), veiligheidsbuffer, bijdrage partner, loon en kinderbijslag daaruit gekopieerd. Variabele uitgaven, extra inkomsten en tankbeurten starten altijd leeg voor een nieuwe maand.
+
+Kredieten staan apart in de collectie `credits` (één document per krediet, met `desc`, `amount`, `startMonth` en `endMonth`), losstaand van de maand-documenten. Elke maand berekent zelf, op basis van die datums, welke kredieten die maand meetellen — er wordt dus niets gekopieerd, en een wijziging aan een krediet werkt met terugwerkende kracht door in alle maanden binnen zijn looptijd.
 
 ## Browserondersteuning
 
