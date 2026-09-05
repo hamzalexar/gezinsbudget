@@ -125,6 +125,20 @@
   font-size: 0.95rem;
 }
 
+.category-trend-select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0 10px;
+  margin-bottom: 14px;
+  font-family: inherit;
+}
+
 @media (min-width: 640px) {
   .chart-wrap { height: 320px; }
 }

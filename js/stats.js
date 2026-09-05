@@ -79,6 +79,47 @@
   }
 
   // ==========================================================================
+  // Categorieën — zelfde lijst als js/app.js, voor de categorie-uitsplitsing
+  // en -trend hieronder. Vaste facturen, kredieten en variabele uitgaven
+  // dragen elk hun eigen category-veld; abonnementen zijn zelf al een
+  // categorie, dus hun totaal telt rechtstreeks mee onder "abonnement".
+  // ==========================================================================
+
+  const CATEGORIES = [
+    { id: "wonen", emoji: "🏠", label: "Wonen" },
+    { id: "elec", emoji: "⚡", label: "Elektriciteit & Gas" },
+    { id: "water", emoji: "💧", label: "Water" },
+    { id: "internet", emoji: "📶", label: "Internet, TV & Telefonie" },
+    { id: "verzekering", emoji: "🛡️", label: "Verzekeringen" },
+    { id: "lening", emoji: "🏦", label: "Lening/Krediet" },
+    { id: "kinderopvang", emoji: "🧸", label: "Kinderopvang" },
+    { id: "boodschappen", emoji: "🛒", label: "Boodschappen" },
+    { id: "eten", emoji: "🍽️", label: "Eten & drinken buiten" },
+    { id: "transport", emoji: "🚗", label: "Transport" },
+    { id: "kleding", emoji: "👕", label: "Kleding" },
+    { id: "elektronica", emoji: "🔌", label: "Elektronica & huishouden" },
+    { id: "verzorging", emoji: "💊", label: "Verzorging & gezondheid" },
+    { id: "vrijetijd", emoji: "🎁", label: "Cadeaus & vrije tijd" },
+    { id: "abonnement", emoji: "📺", label: "Abonnementen" },
+    { id: "overig", emoji: "📦", label: "Overig" }
+  ];
+
+  const CATEGORY_COLORS = [
+    "#3b82f6", "#f59e0b", "#10b981", "#8b5cf6", "#ef4444", "#06b6d4",
+    "#f472b6", "#84cc16", "#6366f1", "#eab308", "#14b8a6", "#fb7185",
+    "#a855f7", "#22c55e", "#f97316", "#94a3b8"
+  ];
+
+  function categoryMeta(id) {
+    return CATEGORIES.find((c) => c.id === id) || CATEGORIES[CATEGORIES.length - 1];
+  }
+
+  function categoryColor(id) {
+    const idx = CATEGORIES.findIndex((c) => c.id === id);
+    return CATEGORY_COLORS[idx >= 0 ? idx : CATEGORY_COLORS.length - 1];
+  }
+
+  // ==========================================================================
   // Data aggregation
   // ==========================================================================
 
@@ -96,6 +137,17 @@
     const fuel = data.fuel || {};
     const fuelDacia = sum(fuel.dacia, "amount");
     const fuelSeat = sum(fuel.seat, "amount");
+
+    const categoryTotals = {};
+    const addToCategory = (catId, amount) => {
+      const key = catId || "overig";
+      categoryTotals[key] = (categoryTotals[key] || 0) + num(amount);
+    };
+    (data.fixedBills || []).forEach((b) => addToCategory(b.category, b.amount));
+    activeCredits.forEach((c) => addToCategory(c.category, c.amount));
+    (data.variableExpenses || []).forEach((v) => addToCategory(v.category, v.amount));
+    if (totalSubs) addToCategory("abonnement", totalSubs);
+
     return {
       monthId,
       totalIncome,
@@ -105,7 +157,8 @@
       totalExpenses: totalFixed + totalVariable + totalSubs,
       afterPaying,
       fuelDacia,
-      fuelSeat
+      fuelSeat,
+      categoryTotals
     };
   }
 
@@ -244,21 +297,19 @@
   }
 
   function renderSplit(monthStat) {
-    const colors = themeColors();
     destroyChart("split");
     document.getElementById("split-month-label").textContent = monthLabelLong(monthStat.monthId);
 
-    const categories = [
-      { label: "Vaste facturen", amount: monthStat.totalFixed, color: colors.blue },
-      { label: "Abonnementen", amount: monthStat.totalSubs, color: colors.amber },
-      { label: "Variabele uitgaven", amount: monthStat.totalVariable, color: colors.violet }
-    ];
+    const categories = Object.keys(monthStat.categoryTotals)
+      .map((id) => ({ id, meta: categoryMeta(id), amount: monthStat.categoryTotals[id], color: categoryColor(id) }))
+      .filter((c) => c.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
     const total = categories.reduce((a, c) => a + c.amount, 0);
 
     charts.split = new Chart(document.getElementById("chart-split"), {
       type: "doughnut",
       data: {
-        labels: categories.map((c) => c.label),
+        labels: categories.map((c) => c.meta.emoji + " " + c.meta.label),
         datasets: [
           {
             data: categories.map((c) => c.amount),
@@ -284,10 +335,67 @@
       const pct = total > 0 ? (c.amount / total) * 100 : 0;
       const tr = document.createElement("tr");
       tr.innerHTML =
-        '<td><span class="split-dot" style="background:' + c.color + '"></span>' + c.label + "</td>" +
+        '<td><span class="split-dot" style="background:' + c.color + '"></span>' + c.meta.emoji + " " + c.meta.label + "</td>" +
         "<td>" + formatEUR(c.amount) + "</td>" +
         "<td>" + pct.toFixed(0) + "%</td>";
       tbody.appendChild(tr);
+    });
+    if (categories.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Geen uitgaven deze maand.</td></tr>';
+    }
+  }
+
+  // ==========================================================================
+  // Trend per categorie (over alle maanden)
+  // ==========================================================================
+
+  let selectedTrendCategory = null;
+
+  function populateCategoryTrendSelect(monthStats) {
+    const select = document.getElementById("category-trend-select");
+    const totalsPerCategory = {};
+    monthStats.forEach((m) => {
+      Object.keys(m.categoryTotals).forEach((id) => {
+        totalsPerCategory[id] = (totalsPerCategory[id] || 0) + m.categoryTotals[id];
+      });
+    });
+    const available = CATEGORIES.filter((c) => totalsPerCategory[c.id] > 0);
+    const list = available.length ? available : CATEGORIES;
+
+    if (!selectedTrendCategory || !list.some((c) => c.id === selectedTrendCategory)) {
+      selectedTrendCategory =
+        list.slice().sort((a, b) => (totalsPerCategory[b.id] || 0) - (totalsPerCategory[a.id] || 0))[0].id;
+    }
+
+    select.innerHTML = list
+      .map((c) => '<option value="' + c.id + '"' + (c.id === selectedTrendCategory ? " selected" : "") + ">" + c.emoji + " " + c.label + "</option>")
+      .join("");
+  }
+
+  function renderCategoryTrend(monthStats) {
+    const colors = themeColors();
+    destroyChart("categoryTrend");
+    const meta = categoryMeta(selectedTrendCategory);
+    const color = categoryColor(selectedTrendCategory);
+    const labels = monthStats.map((m) => monthLabel(m.monthId));
+    const data = monthStats.map((m) => m.categoryTotals[selectedTrendCategory] || 0);
+
+    charts.categoryTrend = new Chart(document.getElementById("chart-category-trend"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: meta.emoji + " " + meta.label,
+            data,
+            borderColor: color,
+            backgroundColor: color,
+            tension: 0.25,
+            fill: false
+          }
+        ]
+      },
+      options: baseOptions(colors)
     });
   }
 
@@ -331,6 +439,13 @@
     });
   }
 
+  function bindCategoryTrendSelect() {
+    document.getElementById("category-trend-select").addEventListener("change", (e) => {
+      selectedTrendCategory = e.target.value;
+      if (window.__lastMonthStats) renderCategoryTrend(window.__lastMonthStats);
+    });
+  }
+
   // ==========================================================================
   // Boot
   // ==========================================================================
@@ -344,6 +459,8 @@
     renderOverviewCharts(monthStats);
     renderMonthPills(monthStats);
     renderSplit(monthStats.find((m) => m.monthId === selectedSplitMonthId));
+    populateCategoryTrendSelect(monthStats);
+    renderCategoryTrend(monthStats);
   }
 
   let latestMonthDocs = null;
@@ -400,6 +517,7 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     bindTabs();
+    bindCategoryTrendSelect();
     if (initFirebase()) loadAndRender();
   });
 })();
