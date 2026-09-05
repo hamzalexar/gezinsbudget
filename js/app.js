@@ -441,16 +441,27 @@
     const totalFixedOnly = sum(d.fixedBills, "amount");
     const totalCreditsOnly = sum(activeCredits, "amount");
     const totalFixed = totalFixedOnly + totalCreditsOnly;
-    const toTransfer = Math.max(0, totalFixed + num(d.buffer) - num(d.partnerContribution));
+    const totalVariable = sum(d.variableExpenses, "amount");
+    const totalSubs = sum(d.subscriptions, "amount");
+    const totalCosts = totalFixed + totalVariable + totalSubs;
+
+    // Over te schrijven: alle kosten (vast + kredieten + variabel +
+    // abonnementen) worden betaald vanaf de gezamenlijke rekening, dus dit
+    // cijfer start op het volledige kostenplaatje (+ buffer, - bijdrage
+    // partner) en daalt zodra om het even welke van die posten als betaald
+    // wordt aangevinkt — niet enkel vaste facturen/kredieten.
+    const toTransfer = Math.max(0, totalCosts + num(d.buffer) - num(d.partnerContribution));
     const paidCreditsAmount = sum(
       activeCredits.filter((c) => (d.paidCreditIds || []).includes(c.id)),
       "amount"
     );
-    const paidFixed = sum(d.fixedBills.filter((b) => b.paid), "amount") + paidCreditsAmount;
-    const remainingOnAccount = Math.max(0, toTransfer - paidFixed);
-    const totalVariable = sum(d.variableExpenses, "amount");
-    const totalSubs = sum(d.subscriptions, "amount");
-    const totalCosts = totalFixed + totalVariable + totalSubs;
+    const paidAmount =
+      sum(d.fixedBills.filter((b) => b.paid), "amount") +
+      paidCreditsAmount +
+      sum(d.variableExpenses.filter((v) => v.paid), "amount") +
+      sum(d.subscriptions.filter((s) => s.paid), "amount");
+    const remainingOnAccount = Math.max(0, toTransfer - paidAmount);
+
     // Vrij te besteden: één rechtstreeks, actueel cijfer — inkomsten min ALLES
     // wat het huishouden deze maand kost (vast + kredieten + variabel +
     // abonnementen). Daalt automatisch naarmate je uitgaven ingeeft.
@@ -886,6 +897,7 @@
     row.querySelector(".var-paid").addEventListener("change", (e) => {
       updateItemInList(state.data.variableExpenses, item.id, { paid: e.target.checked });
       row.classList.toggle("is-paid", e.target.checked);
+      renderKPIs();
       scheduleSave();
     });
     row.querySelector(".row-remove").addEventListener("click", () => {
@@ -935,6 +947,7 @@
     row.querySelector(".sub-paid").addEventListener("change", (e) => {
       updateItemInList(state.data.subscriptions, item.id, { paid: e.target.checked });
       row.classList.toggle("is-paid", e.target.checked);
+      renderKPIs();
       scheduleSave();
     });
     row.querySelector(".row-remove").addEventListener("click", () => {
