@@ -205,15 +205,21 @@
   }
 
   function findPreviousMonth(monthId) {
+    // Fetches the whole (small) months collection and picks the closest
+    // earlier month client-side, rather than a where()+orderBy(desc) query
+    // on documentId() — that combination requires a manually-created
+    // Firestore composite index, which would be an extra setup step for
+    // every user of this app.
     return db
       .collection("months")
-      .where(firebase.firestore.FieldPath.documentId(), "<", monthId)
-      .orderBy(firebase.firestore.FieldPath.documentId(), "desc")
-      .limit(1)
       .get()
       .then((snap) => {
-        if (snap.empty) return null;
-        return { id: snap.docs[0].id, data: snap.docs[0].data() };
+        const earlierIds = snap.docs.map((d) => d.id).filter((id) => id < monthId);
+        if (earlierIds.length === 0) return null;
+        earlierIds.sort();
+        const prevId = earlierIds[earlierIds.length - 1];
+        const prevDoc = snap.docs.find((d) => d.id === prevId);
+        return { id: prevId, data: prevDoc.data() };
       });
   }
 
