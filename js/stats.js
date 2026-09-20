@@ -131,8 +131,9 @@
     const toTransfer = Math.max(0, totalFixed + num(data.buffer) - num(data.partnerContribution));
     const variableBudget = totalIncome - toTransfer;
     const totalVariable = sum(data.variableExpenses, "amount");
+    const totalVisa = sum(data.visaExpenses, "amount");
     const totalSubs = sum(data.subscriptions, "amount");
-    const afterPaying = variableBudget - (totalVariable + totalSubs);
+    const afterPaying = variableBudget - (totalVariable + totalVisa + totalSubs);
     const fuel = data.fuel || {};
     const fuelDacia = sum(fuel.dacia, "amount");
     const fuelSeat = sum(fuel.seat, "amount");
@@ -145,6 +146,7 @@
     (data.fixedBills || []).forEach((b) => addToCategory(b.category, b.amount));
     activeCredits.forEach((c) => addToCategory(c.category, c.amount));
     (data.variableExpenses || []).forEach((v) => addToCategory(v.category, v.amount));
+    (data.visaExpenses || []).forEach((v) => addToCategory(v.category, v.amount));
     if (totalSubs) addToCategory("abonnement", totalSubs);
 
     return {
@@ -152,8 +154,9 @@
       totalIncome,
       totalFixed,
       totalVariable,
+      totalVisa,
       totalSubs,
-      totalExpenses: totalFixed + totalVariable + totalSubs,
+      totalExpenses: totalFixed + totalVariable + totalVisa + totalSubs,
       afterPaying,
       fuelDacia,
       fuelSeat,
@@ -256,6 +259,7 @@
         labels,
         datasets: [
           { label: "Variabele uitgaven", data: monthStats.map((m) => m.totalVariable), backgroundColor: colors.violet },
+          { label: "Visa", data: monthStats.map((m) => m.totalVisa), backgroundColor: colors.blue },
           { label: "Abonnementen", data: monthStats.map((m) => m.totalSubs), backgroundColor: colors.amber }
         ]
       },
@@ -500,7 +504,7 @@
       return;
     }
     const headers = [
-      "Maand", "Inkomsten", "Vaste facturen", "Kredieten", "Variabele uitgaven",
+      "Maand", "Inkomsten", "Vaste facturen", "Kredieten", "Variabele uitgaven", "Visa",
       "Abonnementen", "Totale kosten", "Overschot", "Tanken Dacia", "Tanken Seat"
     ];
     const rows = months.map(({ id, data }) => {
@@ -510,11 +514,12 @@
       const fixedOnly = sum(data.fixedBills, "amount");
       const creditsOnly = sum(activeCredits, "amount");
       const variable = sum(data.variableExpenses, "amount");
+      const visa = sum(data.visaExpenses, "amount");
       const subs = sum(data.subscriptions, "amount");
-      const totalCosts = fixedOnly + creditsOnly + variable + subs;
+      const totalCosts = fixedOnly + creditsOnly + variable + visa + subs;
       const fuel = data.fuel || {};
       return [
-        id, totalIncome, fixedOnly, creditsOnly, variable, subs, totalCosts, totalIncome - totalCosts,
+        id, totalIncome, fixedOnly, creditsOnly, variable, visa, subs, totalCosts, totalIncome - totalCosts,
         sum(fuel.dacia, "amount"), sum(fuel.seat, "amount")
       ].map((v) => (typeof v === "number" ? v.toFixed(2) : v));
     });
@@ -542,6 +547,9 @@
         });
       (data.variableExpenses || []).forEach((v) => {
         rows.push([id, "Variabele uitgave", v.date || "", v.desc || "", categoryMeta(v.category).label, num(v.amount).toFixed(2), v.paid ? "Ja" : "Nee"]);
+      });
+      (data.visaExpenses || []).forEach((v) => {
+        rows.push([id, "Visa", v.date || "", v.desc || "", categoryMeta(v.category).label, num(v.amount).toFixed(2), v.paid ? "Ja" : "Nee"]);
       });
       (data.subscriptions || []).forEach((s) => {
         rows.push([id, "Abonnement", "", s.desc || "", "Abonnementen", num(s.amount).toFixed(2), s.paid ? "Ja" : "Nee"]);

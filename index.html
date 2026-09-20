@@ -118,6 +118,15 @@
           <span class="section-total" id="total-variabel-card">€ 0,00</span>
           <button type="button" class="section-add" data-add="variabel" aria-label="Variabele uitgave toevoegen">+</button>
         </div>
+        <div class="section-card" data-section="visa" role="button" tabindex="0">
+          <span class="section-emoji">💳</span>
+          <span class="section-info">
+            <span class="section-title">Visa</span>
+            <span class="section-meta" id="meta-visa">—</span>
+          </span>
+          <span class="section-total" id="total-visa-card">€ 0,00</span>
+          <button type="button" class="section-add" data-add="visa" aria-label="Visa-aankoop toevoegen">+</button>
+        </div>
         <div class="section-card" data-section="abonnement" role="button" tabindex="0">
           <span class="section-emoji">📺</span>
           <span class="section-info">
@@ -252,6 +261,24 @@
   </div>
 
   <!-- ============================================================= -->
+  <!-- SCHERM: VISA (detail)                                          -->
+  <!-- ============================================================= -->
+  <div class="screen" id="screen-visa">
+    <header class="detail-topbar">
+      <button type="button" class="icon-btn" data-back>←</button>
+      <h2>Visa</h2>
+    </header>
+
+    <div class="detail-total-card">
+      <div class="label">Totaal</div>
+      <div class="val" id="total-visa">€ 0,00</div>
+    </div>
+
+    <div class="list list-expenses" id="visa-list"></div>
+    <button type="button" class="btn-add" id="add-visa">+ Aankoop toevoegen</button>
+  </div>
+
+  <!-- ============================================================= -->
   <!-- SCHERM: ABONNEMENTEN (detail)                                  -->
   <!-- ============================================================= -->
   <div class="screen" id="screen-abonnement">
@@ -321,6 +348,10 @@
       <span class="emoji">🏦</span>
       <span><span class="t">Krediet — met einddatum</span><span class="d">Bv. een lening: loopt automatisch mee tot de einddatum</span></span>
     </button>
+    <button type="button" class="type-option" data-type="visa">
+      <span class="emoji">💳</span>
+      <span><span class="t">Visa-aankoop</span><span class="d">Komt in een aparte Visa-lijst van deze maand</span></span>
+    </button>
   </div>
 
   <!-- ============================================================= -->
@@ -345,6 +376,6 @@
 
 <script src="js/firebase-config.js?v=5"></script>
 <script src="js/auth.js?v=1"></script>
-<script src="js/app.js?v=11"></script>
+<script src="js/app.js?v=12"></script>
 </body>
 </html>

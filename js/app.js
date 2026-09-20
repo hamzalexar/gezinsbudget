@@ -124,6 +124,7 @@
       buffer: 0,
       partnerContribution: 0,
       variableExpenses: [],
+      visaExpenses: [],
       subscriptions: defaultSubscriptions(),
       fuel: { dacia: [], seat: [] }
     };
@@ -142,6 +143,7 @@
       buffer: num(prev.buffer),
       partnerContribution: num(prev.partnerContribution),
       variableExpenses: [],
+      visaExpenses: [],
       subscriptions: (prev.subscriptions || []).map((s) => ({ id: genId(), desc: s.desc || "", amount: num(s.amount), paid: false })),
       fuel: { dacia: [], seat: [] }
     };
@@ -156,6 +158,7 @@
     data.buffer = num(data.buffer);
     data.partnerContribution = num(data.partnerContribution);
     data.variableExpenses = (data.variableExpenses || []).map((v) => ({ id: v.id || genId(), date: v.date || "", desc: v.desc || "", amount: num(v.amount), category: v.category || "overig", paid: !!v.paid }));
+    data.visaExpenses = (data.visaExpenses || []).map((v) => ({ id: v.id || genId(), date: v.date || "", desc: v.desc || "", amount: num(v.amount), category: v.category || "overig", paid: !!v.paid }));
     data.subscriptions = (data.subscriptions || []).map((s) => ({ id: s.id || genId(), desc: s.desc || "", amount: num(s.amount), paid: !!s.paid }));
     data.fuel = data.fuel || {};
     data.fuel.dacia = (data.fuel.dacia || []).map((f) => ({ id: f.id || genId(), date: f.date || "", amount: num(f.amount) }));
@@ -441,10 +444,11 @@
     const totalCreditsOnly = sum(activeCredits, "amount");
     const totalFixed = totalFixedOnly + totalCreditsOnly;
     const totalVariable = sum(d.variableExpenses, "amount");
+    const totalVisa = sum(d.visaExpenses, "amount");
     const totalSubs = sum(d.subscriptions, "amount");
-    const totalCosts = totalFixed + totalVariable + totalSubs;
+    const totalCosts = totalFixed + totalVariable + totalVisa + totalSubs;
 
-    // Over te schrijven: alle kosten (vast + kredieten + variabel +
+    // Over te schrijven: alle kosten (vast + kredieten + variabel + visa +
     // abonnementen) worden betaald vanaf de gezamenlijke rekening, dus dit
     // cijfer start op het volledige kostenplaatje (+ buffer, - bijdrage
     // partner) en daalt zodra om het even welke van die posten als betaald
@@ -458,6 +462,7 @@
       sum(d.fixedBills.filter((b) => b.paid), "amount") +
       paidCreditsAmount +
       sum(d.variableExpenses.filter((v) => v.paid), "amount") +
+      sum(d.visaExpenses.filter((v) => v.paid), "amount") +
       sum(d.subscriptions.filter((s) => s.paid), "amount");
     const remainingOnAccount = Math.max(0, toTransfer - paidAmount);
 
@@ -469,6 +474,7 @@
     document.getElementById("total-income").textContent = formatEUR(totalIncome);
     document.getElementById("total-fixed").textContent = formatEUR(totalFixedOnly);
     document.getElementById("total-variable").textContent = formatEUR(totalVariable);
+    document.getElementById("total-visa").textContent = formatEUR(totalVisa);
     document.getElementById("total-subs").textContent = formatEUR(totalSubs);
     document.getElementById("total-fuel-dacia").textContent = formatEUR(sum(d.fuel.dacia, "amount"));
     document.getElementById("total-fuel-seat").textContent = formatEUR(sum(d.fuel.seat, "amount"));
@@ -483,6 +489,7 @@
     document.getElementById("total-vast-card").textContent = formatEUR(totalFixedOnly);
     document.getElementById("total-krediet-card").textContent = formatEUR(totalCreditsOnly);
     document.getElementById("total-variabel-card").textContent = formatEUR(totalVariable);
+    document.getElementById("total-visa-card").textContent = formatEUR(totalVisa);
     document.getElementById("total-abonnement-card").textContent = formatEUR(totalSubs);
 
     document.getElementById("meta-inkomsten").textContent =
@@ -490,6 +497,7 @@
     document.getElementById("meta-vast").textContent = d.fixedBills.length + " posten";
     document.getElementById("meta-krediet").textContent = activeCredits.length + " lopend";
     document.getElementById("meta-variabel").textContent = d.variableExpenses.length + " posten deze maand";
+    document.getElementById("meta-visa").textContent = d.visaExpenses.length + " posten deze maand";
     document.getElementById("meta-abonnement").textContent = d.subscriptions.filter((s) => s.amount > 0).length + " actief";
     document.getElementById("meta-tank").textContent = (d.fuel.dacia.length + d.fuel.seat.length) + " tankbeurten";
   }
@@ -852,6 +860,68 @@
   }
 
   // ==========================================================================
+  // Rendering: Visa — zelfde opzet als Variabele uitgaven, maar als aparte
+  // lijst/sectie zodat kaartaankopen niet vermengd worden met contant/andere
+  // variabele uitgaven.
+  // ==========================================================================
+
+  function buildVisaRow(item) {
+    const row = document.createElement("div");
+    row.className = "row row-desc-amount";
+    row.innerHTML =
+      '<input type="date" class="visa-date row-date">' +
+      '<input type="text" class="visa-desc" placeholder="Omschrijving" maxlength="80">' +
+      '<select class="row-category visa-category">' + categoryOptionsHTML(item.category) + "</select>" +
+      '<div class="amount-input"><span class="amount-prefix">€</span>' +
+      '<input type="number" class="visa-amount" step="0.01" min="0" inputmode="decimal"></div>' +
+      '<label class="row-paid"><input type="checkbox" class="visa-paid">betaald</label>' +
+      '<button type="button" class="row-remove" aria-label="Verwijder aankoop">×</button>';
+
+    row.querySelector(".visa-date").addEventListener("input", (e) => {
+      updateItemInList(state.data.visaExpenses, item.id, { date: e.target.value });
+      scheduleSave();
+    });
+    row.querySelector(".visa-desc").addEventListener("input", (e) => {
+      updateItemInList(state.data.visaExpenses, item.id, { desc: e.target.value });
+      scheduleSave();
+    });
+    row.querySelector(".visa-category").addEventListener("change", (e) => {
+      updateItemInList(state.data.visaExpenses, item.id, { category: e.target.value });
+      scheduleSave();
+    });
+    row.querySelector(".visa-amount").addEventListener("input", (e) => {
+      updateItemInList(state.data.visaExpenses, item.id, { amount: num(e.target.value) });
+      renderKPIs();
+      scheduleSave();
+    });
+    row.querySelector(".visa-paid").addEventListener("change", (e) => {
+      updateItemInList(state.data.visaExpenses, item.id, { paid: e.target.checked });
+      row.classList.toggle("is-paid", e.target.checked);
+      renderKPIs();
+      scheduleSave();
+    });
+    row.querySelector(".row-remove").addEventListener("click", () => {
+      state.data.visaExpenses = state.data.visaExpenses.filter((v) => v.id !== item.id);
+      renderVisaExpenses();
+      renderKPIs();
+      scheduleSave();
+    });
+    return row;
+  }
+
+  function renderVisaExpenses() {
+    syncList(document.getElementById("visa-list"), state.data.visaExpenses, buildVisaRow, (row, item) => {
+      setValueIfNotFocused(row.querySelector(".visa-date"), item.date);
+      setValueIfNotFocused(row.querySelector(".visa-desc"), item.desc);
+      setValueIfNotFocused(row.querySelector(".visa-category"), item.category);
+      setValueIfNotFocused(row.querySelector(".visa-amount"), item.amount);
+      const paidBox = row.querySelector(".visa-paid");
+      if (document.activeElement !== paidBox) paidBox.checked = !!item.paid;
+      row.classList.toggle("is-paid", !!item.paid);
+    });
+  }
+
+  // ==========================================================================
   // Rendering: Abonnementen
   // ==========================================================================
 
@@ -960,6 +1030,7 @@
     renderBufferAndPartner();
     renderActiveCredits();
     renderVariableExpenses();
+    renderVisaExpenses();
     renderSubscriptions();
     renderFuel();
     renderKPIs();
@@ -979,6 +1050,7 @@
     "screen-vast": "screen-overview",
     "screen-krediet": "screen-overview",
     "screen-variabel": "screen-overview",
+    "screen-visa": "screen-overview",
     "screen-abonnement": "screen-overview",
     "screen-tank": "screen-overview",
     "screen-type": "screen-overview"
@@ -1022,7 +1094,7 @@
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         const section = btn.getAttribute("data-add");
-        if (section === "vast" || section === "krediet" || section === "variabel") {
+        if (section === "vast" || section === "krediet" || section === "variabel" || section === "visa") {
           openCategoryPicker(section, "screen-overview");
         } else {
           showScreen("screen-" + section);
@@ -1095,6 +1167,22 @@
       scheduleSave();
       showScreen("screen-variabel");
       focusSoon('#variable-list [data-id="' + item.id + '"] .var-desc');
+    } else if (addFlowType === "visa") {
+      const today = new Date();
+      const item = {
+        id: genId(),
+        date: today.toISOString().slice(0, 10),
+        desc: "",
+        amount: 0,
+        category: categoryId,
+        paid: false
+      };
+      state.data.visaExpenses.push(item);
+      renderVisaExpenses();
+      renderKPIs();
+      scheduleSave();
+      showScreen("screen-visa");
+      focusSoon('#visa-list [data-id="' + item.id + '"] .visa-desc');
     }
   }
 
@@ -1164,6 +1252,19 @@
         paid: false
       });
       renderVariableExpenses();
+      scheduleSave();
+    });
+    document.getElementById("add-visa").addEventListener("click", () => {
+      const today = new Date();
+      state.data.visaExpenses.push({
+        id: genId(),
+        date: today.toISOString().slice(0, 10),
+        desc: "",
+        amount: 0,
+        category: "overig",
+        paid: false
+      });
+      renderVisaExpenses();
       scheduleSave();
     });
     document.getElementById("add-sub").addEventListener("click", () => {
