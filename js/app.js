@@ -155,7 +155,17 @@
     data.fixedBills = (data.fixedBills || []).map((b) => ({ id: b.id || genId(), desc: b.desc || "", amount: num(b.amount), category: b.category || "overig", paid: !!b.paid }));
     data.buffer = num(data.buffer);
     data.partnerContribution = num(data.partnerContribution);
-    data.variableExpenses = (data.variableExpenses || []).map((v) => ({ id: v.id || genId(), date: v.date || "", desc: v.desc || "", amount: num(v.amount), category: v.category || "overig", paid: !!v.paid }));
+    data.variableExpenses = (data.variableExpenses || []).map((v) => ({
+      id: v.id || genId(),
+      date: v.date || "",
+      desc: v.desc || "",
+      amount: num(v.amount),
+      category: v.category || "overig",
+      paid: !!v.paid,
+      subItems: Array.isArray(v.subItems)
+        ? v.subItems.map((s) => ({ id: s.id || genId(), desc: s.desc || "", amount: num(s.amount), category: s.category || "overig" }))
+        : []
+    }));
     data.subscriptions = (data.subscriptions || []).map((s) => ({ id: s.id || genId(), desc: s.desc || "", amount: num(s.amount), paid: !!s.paid }));
     data.fuel = data.fuel || {};
     data.fuel.dacia = (data.fuel.dacia || []).map((f) => ({ id: f.id || genId(), date: f.date || "", amount: num(f.amount) }));
@@ -795,9 +805,91 @@
   // Rendering: Variabele uitgaven
   // ==========================================================================
 
+  // Variabele uitgaven kunnen uitgesplitst worden in meerdere categorieën
+  // (bv. één Visa-afrekening die eigenlijk boodschappen + kleding + overig
+  // dekt) — het totaalbedrag van de post zelf blijft leidend voor het
+  // budget, maar de statistieken/export tellen dan de uitsplitsing i.p.v.
+  // de ene hoofdcategorie van de post.
+  let expandedVarIds = new Set();
+
+  function findVarItem(id) {
+    return state.data.variableExpenses.find((v) => v.id === id);
+  }
+
+  function defaultSubItem() {
+    return { id: genId(), desc: "", amount: 0, category: "overig" };
+  }
+
+  function buildVarSubItemRow(parentId, sub) {
+    const row = document.createElement("div");
+    row.className = "row row-var-sub";
+    row.innerHTML =
+      '<input type="text" class="varsub-desc" placeholder="Omschrijving" maxlength="60">' +
+      '<select class="row-category varsub-category">' + categoryOptionsHTML(sub.category) + "</select>" +
+      '<div class="amount-input"><span class="amount-prefix">€</span>' +
+      '<input type="number" class="varsub-amount" step="0.01" min="0" inputmode="decimal"></div>' +
+      '<button type="button" class="row-remove" aria-label="Verwijder post">×</button>';
+
+    row.querySelector(".varsub-desc").addEventListener("input", (e) => {
+      updateItemInList(findVarItem(parentId).subItems, sub.id, { desc: e.target.value });
+      scheduleSave();
+    });
+    row.querySelector(".varsub-category").addEventListener("change", (e) => {
+      updateItemInList(findVarItem(parentId).subItems, sub.id, { category: e.target.value });
+      scheduleSave();
+    });
+    row.querySelector(".varsub-amount").addEventListener("input", (e) => {
+      updateItemInList(findVarItem(parentId).subItems, sub.id, { amount: num(e.target.value) });
+      renderVarSubPanel(findVarItem(parentId));
+      scheduleSave();
+    });
+    row.querySelector(".row-remove").addEventListener("click", () => {
+      const parent = findVarItem(parentId);
+      parent.subItems = parent.subItems.filter((s) => s.id !== sub.id);
+      renderVarSubPanel(parent);
+      scheduleSave();
+    });
+    return row;
+  }
+
+  function renderVarSubPanel(item) {
+    const row = document.querySelector('#variable-list [data-id="' + item.id + '"]');
+    if (!row) return;
+    const panel = row.querySelector(".var-subitems");
+    const subs = item.subItems || [];
+    syncList(panel.querySelector(".var-subitems-list"), subs, (sub) => buildVarSubItemRow(item.id, sub), (subRow, sub) => {
+      setValueIfNotFocused(subRow.querySelector(".varsub-desc"), sub.desc);
+      setValueIfNotFocused(subRow.querySelector(".varsub-category"), sub.category);
+      setValueIfNotFocused(subRow.querySelector(".varsub-amount"), sub.amount);
+    });
+
+    const allocated = sum(subs, "amount");
+    const total = num(item.amount);
+    const diff = total - allocated;
+    const summaryEl = panel.querySelector(".var-subitems-summary");
+    summaryEl.textContent =
+      subs.length === 0
+        ? "Nog geen categorieën toegevoegd."
+        : "Toegewezen: " + formatEUR(allocated) + " van " + formatEUR(total) + (Math.abs(diff) > 0.01 ? " (nog " + formatEUR(diff) + " te verdelen)" : " ✓");
+    summaryEl.classList.toggle("var-subitems-mismatch", subs.length > 0 && Math.abs(diff) > 0.01);
+    panel.classList.toggle("hidden", !expandedVarIds.has(item.id));
+    row.querySelector(".var-split-toggle").classList.toggle("active", subs.length > 0);
+  }
+
+  function addVarSubItem(parentId) {
+    const parent = findVarItem(parentId);
+    if (!parent) return;
+    if (!Array.isArray(parent.subItems)) parent.subItems = [];
+    parent.subItems.push(defaultSubItem());
+    expandedVarIds.add(parentId);
+    renderVarSubPanel(parent);
+    scheduleSave();
+    focusSoon('#variable-list [data-id="' + parentId + '"] .row-var-sub:last-child .varsub-desc');
+  }
+
   function buildVariableRow(item) {
     const row = document.createElement("div");
-    row.className = "row row-desc-amount";
+    row.className = "row row-desc-amount row-variable";
     row.innerHTML =
       '<input type="date" class="var-date row-date">' +
       '<input type="text" class="var-desc" placeholder="Omschrijving" maxlength="80">' +
@@ -805,7 +897,14 @@
       '<div class="amount-input"><span class="amount-prefix">€</span>' +
       '<input type="number" class="var-amount" step="0.01" min="0" inputmode="decimal"></div>' +
       '<label class="row-paid"><input type="checkbox" class="var-paid">betaald</label>' +
-      '<button type="button" class="row-remove" aria-label="Verwijder uitgave">×</button>';
+      '<button type="button" class="var-split-toggle" aria-label="Categorieën uitsplitsen" title="Uitsplitsen in categorieën">🧾</button>' +
+      '<button type="button" class="row-remove" aria-label="Verwijder uitgave">×</button>' +
+      '<div class="var-subitems hidden">' +
+      '<p class="var-subitems-hint">Splits deze post op in meerdere categorieën (bv. een Visa-afrekening met boodschappen + kleding + overig) — het bedrag hierboven blijft tellen voor je budget, de posten hieronder bepalen wat er in de statistieken per categorie verschijnt.</p>' +
+      '<div class="var-subitems-list"></div>' +
+      '<p class="var-subitems-summary"></p>' +
+      '<button type="button" class="btn-add var-subitem-add">+ Categorie toevoegen</button>' +
+      "</div>";
 
     row.querySelector(".var-date").addEventListener("input", (e) => {
       updateItemInList(state.data.variableExpenses, item.id, { date: e.target.value });
@@ -822,6 +921,7 @@
     row.querySelector(".var-amount").addEventListener("input", (e) => {
       updateItemInList(state.data.variableExpenses, item.id, { amount: num(e.target.value) });
       renderKPIs();
+      renderVarSubPanel(findVarItem(item.id));
       scheduleSave();
     });
     row.querySelector(".var-paid").addEventListener("change", (e) => {
@@ -830,8 +930,15 @@
       renderKPIs();
       scheduleSave();
     });
+    row.querySelector(".var-split-toggle").addEventListener("click", () => {
+      if (expandedVarIds.has(item.id)) expandedVarIds.delete(item.id);
+      else expandedVarIds.add(item.id);
+      renderVarSubPanel(findVarItem(item.id));
+    });
+    row.querySelector(".var-subitem-add").addEventListener("click", () => addVarSubItem(item.id));
     row.querySelector(".row-remove").addEventListener("click", () => {
       state.data.variableExpenses = state.data.variableExpenses.filter((v) => v.id !== item.id);
+      expandedVarIds.delete(item.id);
       renderVariableExpenses();
       renderKPIs();
       scheduleSave();
@@ -848,6 +955,7 @@
       const paidBox = row.querySelector(".var-paid");
       if (document.activeElement !== paidBox) paidBox.checked = !!item.paid;
       row.classList.toggle("is-paid", !!item.paid);
+      renderVarSubPanel(item);
     });
   }
 
