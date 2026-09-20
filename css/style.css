@@ -410,43 +410,7 @@ input[type="checkbox"] {
 .row-desc-amount input[type="text"] { flex: 1 1 100%; order: 1; }
 .row-desc-amount .amount-input { order: 2; }
 .row-desc-amount .row-paid { order: 3; }
-.row-desc-amount .var-split-toggle { order: 4; }
-.row-desc-amount .row-remove { order: 5; margin-left: auto; }
-
-/* ===== Variabele uitgaven: uitsplitsen per categorie (bv. Visa) ===== */
-.var-split-toggle {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text-muted);
-  font-size: 1rem;
-  cursor: pointer;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.var-split-toggle.active { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
-.var-split-toggle:active { transform: scale(0.92); }
-
-.row-desc-amount.row-variable { flex-wrap: wrap; }
-.row-desc-amount.row-variable .var-subitems { order: 6; flex: 1 1 100%; }
-
-.var-subitems {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.var-subitems-hint { margin: 0; font-size: 0.76rem; color: var(--text-muted); }
-.var-subitems-list { display: flex; flex-direction: column; gap: 6px; }
-.row-var-sub { background: var(--surface); }
-.var-subitems-summary { margin: 0; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); }
-.var-subitems-summary.var-subitems-mismatch { color: var(--negative); }
+.row-desc-amount .row-remove { order: 4; margin-left: auto; }
 
 .row .amount-input { flex: 0 0 auto; }
 
@@ -541,10 +505,6 @@ input[type="checkbox"] {
 
 .row.is-paid { opacity: 0.6; }
 .row.is-paid input[type="text"] { text-decoration: line-through; }
-/* Sub-items (categorie-uitsplitsing) hebben geen eigen betaald-status —
-   voorkom dat ze toch doorgestreept worden omdat ze in de DOM binnen de
-   (mogelijk betaalde) hoofdpost zitten. */
-.row.is-paid .var-subitems input[type="text"] { text-decoration: none; }
 
 .btn-add {
   margin-top: 10px;
@@ -798,9 +758,7 @@ input[type="checkbox"] {
   .row-desc-amount .amount-input,
   .row-desc-amount .row-category,
   .row-desc-amount .row-paid,
-  .row-desc-amount .var-split-toggle,
   .row-desc-amount .row-remove { order: 0; margin-left: 0; }
-  .row-desc-amount.row-variable { flex-wrap: wrap; }
 
   .cat-grid { grid-template-columns: repeat(4, 1fr); }
 }

@@ -144,13 +144,7 @@
     };
     (data.fixedBills || []).forEach((b) => addToCategory(b.category, b.amount));
     activeCredits.forEach((c) => addToCategory(c.category, c.amount));
-    (data.variableExpenses || []).forEach((v) => {
-      if (Array.isArray(v.subItems) && v.subItems.length) {
-        v.subItems.forEach((s) => addToCategory(s.category, s.amount));
-      } else {
-        addToCategory(v.category, v.amount);
-      }
-    });
+    (data.variableExpenses || []).forEach((v) => addToCategory(v.category, v.amount));
     if (totalSubs) addToCategory("abonnement", totalSubs);
 
     return {
@@ -547,13 +541,7 @@
           rows.push([id, "Krediet", "", c.desc || "", categoryMeta(c.category).label, num(c.amount).toFixed(2), paid ? "Ja" : "Nee"]);
         });
       (data.variableExpenses || []).forEach((v) => {
-        if (Array.isArray(v.subItems) && v.subItems.length) {
-          v.subItems.forEach((s) => {
-            rows.push([id, "Variabele uitgave", v.date || "", (v.desc || "") + " — " + (s.desc || ""), categoryMeta(s.category).label, num(s.amount).toFixed(2), v.paid ? "Ja" : "Nee"]);
-          });
-        } else {
-          rows.push([id, "Variabele uitgave", v.date || "", v.desc || "", categoryMeta(v.category).label, num(v.amount).toFixed(2), v.paid ? "Ja" : "Nee"]);
-        }
+        rows.push([id, "Variabele uitgave", v.date || "", v.desc || "", categoryMeta(v.category).label, num(v.amount).toFixed(2), v.paid ? "Ja" : "Nee"]);
       });
       (data.subscriptions || []).forEach((s) => {
         rows.push([id, "Abonnement", "", s.desc || "", "Abonnementen", num(s.amount).toFixed(2), s.paid ? "Ja" : "Nee"]);
