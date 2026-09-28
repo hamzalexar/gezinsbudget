@@ -125,6 +125,7 @@
       partnerContribution: 0,
       variableExpenses: [],
       visaExpenses: [],
+      visaPaid: false,
       subscriptions: defaultSubscriptions(),
       fuel: { dacia: [], seat: [] }
     };
@@ -144,6 +145,7 @@
       partnerContribution: num(prev.partnerContribution),
       variableExpenses: [],
       visaExpenses: [],
+      visaPaid: false,
       subscriptions: (prev.subscriptions || []).map((s) => ({ id: genId(), desc: s.desc || "", amount: num(s.amount), paid: false })),
       fuel: { dacia: [], seat: [] }
     };
@@ -158,7 +160,8 @@
     data.buffer = num(data.buffer);
     data.partnerContribution = num(data.partnerContribution);
     data.variableExpenses = (data.variableExpenses || []).map((v) => ({ id: v.id || genId(), date: v.date || "", desc: v.desc || "", amount: num(v.amount), category: v.category || "overig", paid: !!v.paid }));
-    data.visaExpenses = (data.visaExpenses || []).map((v) => ({ id: v.id || genId(), date: v.date || "", desc: v.desc || "", amount: num(v.amount), category: v.category || "overig", paid: !!v.paid }));
+    data.visaExpenses = (data.visaExpenses || []).map((v) => ({ id: v.id || genId(), date: v.date || "", desc: v.desc || "", amount: num(v.amount), category: v.category || "overig" }));
+    data.visaPaid = !!data.visaPaid;
     data.subscriptions = (data.subscriptions || []).map((s) => ({ id: s.id || genId(), desc: s.desc || "", amount: num(s.amount), paid: !!s.paid }));
     data.fuel = data.fuel || {};
     data.fuel.dacia = (data.fuel.dacia || []).map((f) => ({ id: f.id || genId(), date: f.date || "", amount: num(f.amount) }));
@@ -462,7 +465,7 @@
       sum(d.fixedBills.filter((b) => b.paid), "amount") +
       paidCreditsAmount +
       sum(d.variableExpenses.filter((v) => v.paid), "amount") +
-      sum(d.visaExpenses.filter((v) => v.paid), "amount") +
+      (d.visaPaid ? totalVisa : 0) +
       sum(d.subscriptions.filter((s) => s.paid), "amount");
     const remainingOnAccount = Math.max(0, toTransfer - paidAmount);
 
@@ -874,7 +877,6 @@
       '<select class="row-category visa-category">' + categoryOptionsHTML(item.category) + "</select>" +
       '<div class="amount-input"><span class="amount-prefix">€</span>' +
       '<input type="number" class="visa-amount" step="0.01" min="0" inputmode="decimal"></div>' +
-      '<label class="row-paid"><input type="checkbox" class="visa-paid">betaald</label>' +
       '<button type="button" class="row-remove" aria-label="Verwijder aankoop">×</button>';
 
     row.querySelector(".visa-date").addEventListener("input", (e) => {
@@ -894,12 +896,6 @@
       renderKPIs();
       scheduleSave();
     });
-    row.querySelector(".visa-paid").addEventListener("change", (e) => {
-      updateItemInList(state.data.visaExpenses, item.id, { paid: e.target.checked });
-      row.classList.toggle("is-paid", e.target.checked);
-      renderKPIs();
-      scheduleSave();
-    });
     row.querySelector(".row-remove").addEventListener("click", () => {
       state.data.visaExpenses = state.data.visaExpenses.filter((v) => v.id !== item.id);
       renderVisaExpenses();
@@ -909,16 +905,20 @@
     return row;
   }
 
+  // Visa-aankopen worden niet individueel betaald — ze komen samen op één
+  // maandelijkse afrekening (meestal rond de 5de) die in één keer wordt
+  // afgeschreven. Daarom één gedeelde "betaald"-schakelaar voor de hele
+  // sectie i.p.v. een vinkje per post.
   function renderVisaExpenses() {
     syncList(document.getElementById("visa-list"), state.data.visaExpenses, buildVisaRow, (row, item) => {
       setValueIfNotFocused(row.querySelector(".visa-date"), item.date);
       setValueIfNotFocused(row.querySelector(".visa-desc"), item.desc);
       setValueIfNotFocused(row.querySelector(".visa-category"), item.category);
       setValueIfNotFocused(row.querySelector(".visa-amount"), item.amount);
-      const paidBox = row.querySelector(".visa-paid");
-      if (document.activeElement !== paidBox) paidBox.checked = !!item.paid;
-      row.classList.toggle("is-paid", !!item.paid);
+      row.classList.toggle("is-paid", !!state.data.visaPaid);
     });
+    const paidAllBox = document.getElementById("visa-paid-all");
+    if (document.activeElement !== paidAllBox) paidAllBox.checked = !!state.data.visaPaid;
   }
 
   // ==========================================================================
@@ -1174,8 +1174,7 @@
         date: today.toISOString().slice(0, 10),
         desc: "",
         amount: 0,
-        category: categoryId,
-        paid: false
+        category: categoryId
       };
       state.data.visaExpenses.push(item);
       renderVisaExpenses();
@@ -1261,10 +1260,15 @@
         date: today.toISOString().slice(0, 10),
         desc: "",
         amount: 0,
-        category: "overig",
-        paid: false
+        category: "overig"
       });
       renderVisaExpenses();
+      scheduleSave();
+    });
+    document.getElementById("visa-paid-all").addEventListener("change", (e) => {
+      state.data.visaPaid = e.target.checked;
+      renderVisaExpenses();
+      renderKPIs();
       scheduleSave();
     });
     document.getElementById("add-sub").addEventListener("click", () => {

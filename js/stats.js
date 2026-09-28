@@ -549,7 +549,7 @@
         rows.push([id, "Variabele uitgave", v.date || "", v.desc || "", categoryMeta(v.category).label, num(v.amount).toFixed(2), v.paid ? "Ja" : "Nee"]);
       });
       (data.visaExpenses || []).forEach((v) => {
-        rows.push([id, "Visa", v.date || "", v.desc || "", categoryMeta(v.category).label, num(v.amount).toFixed(2), v.paid ? "Ja" : "Nee"]);
+        rows.push([id, "Visa", v.date || "", v.desc || "", categoryMeta(v.category).label, num(v.amount).toFixed(2), data.visaPaid ? "Ja" : "Nee"]);
       });
       (data.subscriptions || []).forEach((s) => {
         rows.push([id, "Abonnement", "", s.desc || "", "Abonnementen", num(s.amount).toFixed(2), s.paid ? "Ja" : "Nee"]);

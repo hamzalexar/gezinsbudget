@@ -7,7 +7,7 @@
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%92%B6</text></svg>">
 <title>Gezinsbudget</title>
-<link rel="stylesheet" href="css/style.css?v=7">
+<link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body>
 <div class="app">
@@ -274,6 +274,11 @@
       <div class="val" id="total-visa">€ 0,00</div>
     </div>
 
+    <label class="visa-paid-all">
+      <input type="checkbox" id="visa-paid-all">
+      <span>Volledige Visa-afrekening betaald <span class="visa-paid-all-hint">(wordt meestal rond de 5de van de maand in één keer afgeschreven)</span></span>
+    </label>
+
     <div class="list list-expenses" id="visa-list"></div>
     <button type="button" class="btn-add" id="add-visa">+ Aankoop toevoegen</button>
   </div>
@@ -376,6 +381,6 @@
 
 <script src="js/firebase-config.js?v=5"></script>
 <script src="js/auth.js?v=1"></script>
-<script src="js/app.js?v=12"></script>
+<script src="js/app.js?v=13"></script>
 </body>
 </html>
